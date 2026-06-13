@@ -67,6 +67,7 @@ DEFAULT_PAIR_MAX_SKEW_MS = 40.0
 DEFAULT_SAVE_QUEUE_WARNING_THRESHOLD = 25
 DEFAULT_NOZZLE_DISTANCE_MM = base.DEFAULT_NOZZLE_DISTANCE_MM
 DEFAULT_BELT_SPEED_MM_PER_S = base.DEFAULT_BELT_SPEED_MM_PER_S
+DEFAULT_TRIGGER_PIN = base.DEFAULT_TRIGGER_PIN
 DEFAULT_TRIGGER_OFFSET_S = base.DEFAULT_TRIGGER_OFFSET_S
 DEFAULT_FINALIZE_QUIET_MS = base.DEFAULT_FINALIZE_QUIET_MS
 DEFAULT_LATENCY_COMPENSATION_MS = base.DEFAULT_LATENCY_COMPENSATION_MS
@@ -2707,7 +2708,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=DEFECT_REJECT_THRESHOLD,
         help="minimum dirt_defect score at actuation required to trigger reject",
     )
-    parser.add_argument("--trigger-pin", type=int, default=17)
+    parser.add_argument(
+        "--trigger-pin",
+        default=DEFAULT_TRIGGER_PIN,
+        help=(
+            "Jetson.GPIO output pin to pulse for reject actuation "
+            f"(default: {DEFAULT_TRIGGER_PIN}; GPIO-09 uses CVM naming)"
+        ),
+    )
     parser.add_argument("--trigger-duration", type=float, default=0.3)
     parser.add_argument("--trigger-min-gap", type=float, default=0.0)
     parser.add_argument("--track-iou", type=float, default=0.3)
@@ -3000,7 +3008,10 @@ def run_detection(
         log_fn(f"Raw pictures: {getattr(review_writer, 'pictures_dir', pictures_dir)}")
         if isinstance(log_fn, SessionLogTee):
             log_fn(f"Session log: {log_fn.log_path}")
-        log_fn("GPIO backend: " + ("simulation" if args.simulate_gpio else "hardware"))
+        log_fn(
+            "GPIO backend: "
+            + ("simulation" if args.simulate_gpio else scheduler.backend_name)
+        )
         performance_stats = RuntimePerformanceStats(
             args.perf_log_interval_s,
             camera_count=len(camera_sources),

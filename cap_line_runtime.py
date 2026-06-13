@@ -25,7 +25,7 @@ from datetime import datetime, timedelta
 from itertools import count
 from typing import Callable
 
-from gpio_output import GPIOOutputPin
+from gpio_output import DEFAULT_TRIGGER_PIN, GPIOOutputPin
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -159,8 +159,8 @@ class RuntimeClock:
 class NullGPIOOutputPin:
     backend_name = "null"
 
-    def __init__(self, pin: int):
-        self.pin = int(pin)
+    def __init__(self, pin):
+        self.pin = pin
 
     def on(self) -> None:
         return None
@@ -1873,7 +1873,7 @@ class RejectJob:
 class RejectScheduler:
     def __init__(
         self,
-        trigger_pin: int,
+        trigger_pin,
         trigger_duration: float,
         trigger_min_gap: float = 0.0,
         *,
@@ -1887,10 +1887,11 @@ class RejectScheduler:
         if trigger_min_gap < 0:
             raise ValueError("trigger_min_gap must be 0 or greater")
 
-        self.trigger_pin = int(trigger_pin)
+        self.trigger_pin = trigger_pin
         self.trigger_duration = float(trigger_duration)
         self.trigger_min_gap = float(trigger_min_gap)
         self._pin = pin_factory(self.trigger_pin)
+        self.backend_name = getattr(self._pin, "backend_name", "hardware")
         self._log = log_fn
         self._time_fn = time_fn
         self._sleep_fn = sleep_fn
@@ -2090,7 +2091,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="override inference image size; by default it matches the model input",
     )
     parser.add_argument("--no-display", action="store_true", help="run without OpenCV GUI")
-    parser.add_argument("--trigger-pin", type=int, default=17)
+    parser.add_argument(
+        "--trigger-pin",
+        default=DEFAULT_TRIGGER_PIN,
+        help=(
+            "Jetson.GPIO output pin to pulse for reject actuation "
+            f"(default: {DEFAULT_TRIGGER_PIN}; GPIO-09 uses CVM naming)"
+        ),
+    )
     parser.add_argument("--trigger-duration", type=float, default=0.3)
     parser.add_argument("--trigger-min-gap", type=float, default=0.0)
     parser.add_argument("--track-iou", type=float, default=0.3)
@@ -2237,7 +2245,10 @@ def run_detection(
         )
         log_fn(f"Timing logs: {timing_logger.directory}")
         log_fn(f"Review captures: {review_writer.directory}")
-        log_fn("GPIO backend: " + ("simulation" if args.simulate_gpio else "hardware"))
+        log_fn(
+            "GPIO backend: "
+            + ("simulation" if args.simulate_gpio else scheduler.backend_name)
+        )
 
         def queue_trigger_decision(
             tracked_cap: TrackedCap,

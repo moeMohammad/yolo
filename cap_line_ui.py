@@ -26,6 +26,7 @@ DEFAULT_MODEL = cap_line_runtime.DEFAULT_MODEL
 DEFAULT_TIMING_LOG_DIR = cap_line_runtime.DEFAULT_TIMING_LOG_DIR
 EVENT_LIMIT = 100
 TIMING_LOG_LIMIT = 100
+TRIGGER_PIN_LABEL = "Trigger GPIO (CVM)"
 
 
 class HistoryRepository:
@@ -648,9 +649,7 @@ if PYQT_AVAILABLE:
             self.conf_spin.setSingleStep(0.01)
             self.conf_spin.setDecimals(3)
             self.conf_spin.setValue(cap_line_runtime.DEFAULT_CONFIDENCE)
-            self.trigger_pin_spin = QSpinBox()
-            self.trigger_pin_spin.setRange(1, 40)
-            self.trigger_pin_spin.setValue(17)
+            self.trigger_pin_input = QLineEdit(cap_line_runtime.DEFAULT_TRIGGER_PIN)
             self.trigger_duration_spin = QDoubleSpinBox()
             self.trigger_duration_spin.setRange(0.01, 10.0)
             self.trigger_duration_spin.setDecimals(3)
@@ -722,7 +721,7 @@ if PYQT_AVAILABLE:
             config_form.addRow("FPS", self.fps_spin)
             config_form.addRow("Exposure", self.exposure_spin)
             config_form.addRow("Confidence", self.conf_spin)
-            config_form.addRow("Trigger Pin", self.trigger_pin_spin)
+            config_form.addRow(TRIGGER_PIN_LABEL, self.trigger_pin_input)
             config_form.addRow("Trigger Duration", self.trigger_duration_spin)
             config_form.addRow("Trigger Min Gap", self.trigger_gap_spin)
             config_form.addRow("Timing Camera", self.timing_camera_combo)
@@ -822,7 +821,10 @@ if PYQT_AVAILABLE:
             args.fps = self.fps_spin.value()
             args.exposure = self.exposure_spin.value()
             args.conf = self.conf_spin.value()
-            args.trigger_pin = self.trigger_pin_spin.value()
+            args.trigger_pin = (
+                self.trigger_pin_input.text().strip()
+                or cap_line_runtime.DEFAULT_TRIGGER_PIN
+            )
             args.trigger_duration = self.trigger_duration_spin.value()
             args.trigger_min_gap = self.trigger_gap_spin.value()
             args.timing_camera = int(self.timing_camera_combo.currentText())

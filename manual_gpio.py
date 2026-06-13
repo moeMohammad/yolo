@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Manual GPIO controller for the trigger pin used by full_run.py.
+Manual Jetson.GPIO controller for the cap-line trigger pin.
 
 Examples:
   python3 manual_gpio.py
@@ -15,22 +15,20 @@ import argparse
 import shlex
 import time
 
-from gpio_output import GPIOOutputPin
+from gpio_output import DEFAULT_TRIGGER_PIN, GPIOOutputPin
 
 
-DEFAULT_TRIGGER_PIN = 17
 DEFAULT_PULSE_DURATION = 1.0
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Manually control the GPIO output pin used by full_run.py."
+        description="Manually control the Jetson.GPIO output pin used by the cap-line runtime."
     )
     parser.add_argument(
         "--pin",
-        type=int,
         default=DEFAULT_TRIGGER_PIN,
-        help=f"BCM GPIO pin to control (default: {DEFAULT_TRIGGER_PIN})",
+        help=f"Jetson.GPIO pin to control (default: {DEFAULT_TRIGGER_PIN})",
     )
 
     subparsers = parser.add_subparsers(dest="command")
@@ -81,7 +79,7 @@ def hold_on(pin: GPIOOutputPin) -> None:
 
 def run_interactive(pin: GPIOOutputPin, pin_number: int) -> None:
     state = "OFF"
-    print(f"Interactive GPIO control for BCM pin {pin_number}")
+    print(f"Interactive Jetson.GPIO control for pin {pin_number}")
     print("Commands: on, off, pulse [seconds], status, quit")
 
     while True:
@@ -143,8 +141,8 @@ def main() -> None:
     command = args.command or "interactive"
 
     pin = GPIOOutputPin(args.pin)
-    print(f"Using BCM pin {args.pin} via {pin.backend_name}")
-    print("Do not run this while full_run.py is already controlling the same pin.")
+    print(f"Using Jetson.GPIO pin {args.pin} via {pin.backend_name}")
+    print("Do not run this while the cap-line runtime controls the same pin.")
 
     try:
         if command == "interactive":

@@ -41,6 +41,7 @@ class CapLineUiV2Tests(unittest.TestCase):
             runtime_module.DEFAULT_SAVE_QUEUE_WARNING_THRESHOLD,
             args.save_queue_warning_threshold,
         )
+        self.assertEqual(runtime_module.DEFAULT_TRIGGER_PIN, args.trigger_pin)
 
     def test_resources_dirs_live_under_resources_tree(self) -> None:
         runtime_module = load_module("cap_line_runtime_v2")
@@ -74,6 +75,12 @@ class CapLineUiV2Tests(unittest.TestCase):
         self.assertIn("Reject Threshold", ui_module.CALIBRATION_FIELD_LABELS)
         self.assertIn("Pair Max Skew ms", ui_module.CALIBRATION_FIELD_LABELS)
         self.assertNotIn("Detection Threshold", ui_module.CALIBRATION_FIELD_LABELS)
+
+    def test_trigger_pin_label_clarifies_jetson_gpio_cvm_numbering(self) -> None:
+        ui_module = load_module("cap_line_ui_v2")
+
+        self.assertIn("Trigger GPIO (CVM)", ui_module.CALIBRATION_FIELD_LABELS)
+        self.assertNotIn("Trigger Pin", ui_module.CALIBRATION_FIELD_LABELS)
 
     def test_removed_policy_controls_are_absent_from_v2_ui(self) -> None:
         ui_module = load_module("cap_line_ui_v2")

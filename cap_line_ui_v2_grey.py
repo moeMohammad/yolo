@@ -33,7 +33,7 @@ CALIBRATION_FIELD_LABELS = (
     "Tracking Threshold",
     "Reject Threshold",
     "Pair Max Skew ms",
-    "Trigger Pin",
+    base_ui.TRIGGER_PIN_LABEL,
     "Trigger Duration",
     "Trigger Min Gap",
     "Timing Camera",
@@ -263,9 +263,9 @@ if PYQT_AVAILABLE:
             self.pair_skew_spin.setDecimals(1)
             self.pair_skew_spin.setSingleStep(5.0)
             self.pair_skew_spin.setValue(cap_line_runtime_v2.DEFAULT_PAIR_MAX_SKEW_MS)
-            self.trigger_pin_spin = base_ui.QSpinBox()
-            self.trigger_pin_spin.setRange(1, 40)
-            self.trigger_pin_spin.setValue(17)
+            self.trigger_pin_input = base_ui.QLineEdit(
+                cap_line_runtime_v2.DEFAULT_TRIGGER_PIN
+            )
             self.trigger_duration_spin = base_ui.QDoubleSpinBox()
             self.trigger_duration_spin.setRange(0.01, 10.0)
             self.trigger_duration_spin.setDecimals(3)
@@ -323,7 +323,7 @@ if PYQT_AVAILABLE:
             config_form.addRow("Tracking Threshold", self.tracking_threshold_spin)
             config_form.addRow("Reject Threshold", self.reject_threshold_spin)
             config_form.addRow("Pair Max Skew ms", self.pair_skew_spin)
-            config_form.addRow("Trigger Pin", self.trigger_pin_spin)
+            config_form.addRow(base_ui.TRIGGER_PIN_LABEL, self.trigger_pin_input)
             config_form.addRow("Trigger Duration", self.trigger_duration_spin)
             config_form.addRow("Trigger Min Gap", self.trigger_gap_spin)
             config_form.addRow("Timing Camera", self.timing_camera_combo)
@@ -398,7 +398,10 @@ if PYQT_AVAILABLE:
             args.reject_threshold = self.reject_threshold_spin.value()
             args.global_threshold = args.tracking_threshold
             args.pair_max_skew_ms = self.pair_skew_spin.value()
-            args.trigger_pin = self.trigger_pin_spin.value()
+            args.trigger_pin = (
+                self.trigger_pin_input.text().strip()
+                or cap_line_runtime_v2.DEFAULT_TRIGGER_PIN
+            )
             args.trigger_duration = self.trigger_duration_spin.value()
             args.trigger_min_gap = self.trigger_gap_spin.value()
             args.timing_camera = int(self.timing_camera_combo.currentText())
