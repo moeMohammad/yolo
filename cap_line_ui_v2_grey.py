@@ -264,7 +264,7 @@ if PYQT_AVAILABLE:
             self.pair_skew_spin.setSingleStep(5.0)
             self.pair_skew_spin.setValue(cap_line_runtime_v2.DEFAULT_PAIR_MAX_SKEW_MS)
             self.trigger_pin_input = base_ui.QLineEdit(
-                cap_line_runtime_v2.DEFAULT_TRIGGER_PIN
+                str(cap_line_runtime_v2.DEFAULT_TRIGGER_PIN)
             )
             self.trigger_duration_spin = base_ui.QDoubleSpinBox()
             self.trigger_duration_spin.setRange(0.01, 10.0)

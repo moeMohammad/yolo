@@ -649,7 +649,7 @@ if PYQT_AVAILABLE:
             self.conf_spin.setSingleStep(0.01)
             self.conf_spin.setDecimals(3)
             self.conf_spin.setValue(cap_line_runtime.DEFAULT_CONFIDENCE)
-            self.trigger_pin_input = QLineEdit(cap_line_runtime.DEFAULT_TRIGGER_PIN)
+            self.trigger_pin_input = QLineEdit(str(cap_line_runtime.DEFAULT_TRIGGER_PIN))
             self.trigger_duration_spin = QDoubleSpinBox()
             self.trigger_duration_spin.setRange(0.01, 10.0)
             self.trigger_duration_spin.setDecimals(3)
