@@ -23,8 +23,7 @@ def load_module(module_name: str):
 
 
 class FakeJetsonGPIO(types.ModuleType):
-    BCM = "BCM"
-    CVM = "CVM"
+    BOARD = "BOARD"
     OUT = "OUT"
     LOW = 0
     HIGH = 1
@@ -60,28 +59,28 @@ def build_fake_jetson_modules(fake_gpio):
 
 
 class GPIOOutputPinTests(unittest.TestCase):
-    def test_output_pin_uses_jetson_gpio_cvm_backend_for_gpio_09(self) -> None:
+    def test_output_pin_uses_jetson_gpio_board_backend_for_gpio09(self) -> None:
         module = load_module("gpio_output")
         fake_gpio = FakeJetsonGPIO()
 
         with patch.dict(sys.modules, build_fake_jetson_modules(fake_gpio)):
-            pin = module.GPIOOutputPin("GPIO-09")
+            pin = module.GPIOOutputPin("GPIO09")
             pin.on()
             pin.off()
             pin.close()
 
-        self.assertEqual("GPIO09", pin.pin)
-        self.assertEqual("Jetson.GPIO CVM", pin.backend_name)
+        self.assertEqual(7, pin.pin)
+        self.assertEqual("Jetson.GPIO BOARD", pin.backend_name)
         self.assertEqual(
             [
                 ("setwarnings", False),
-                ("setmode", "CVM"),
-                ("setup", "GPIO09", "OUT", 0),
-                ("output", "GPIO09", 0),
-                ("output", "GPIO09", 1),
-                ("output", "GPIO09", 0),
-                ("output", "GPIO09", 0),
-                ("cleanup", "GPIO09"),
+                ("setmode", "BOARD"),
+                ("setup", 7, "OUT", 0),
+                ("output", 7, 0),
+                ("output", 7, 1),
+                ("output", 7, 0),
+                ("output", 7, 0),
+                ("cleanup", 7),
             ],
             fake_gpio.calls,
         )
@@ -91,23 +90,23 @@ class GPIOOutputPinTests(unittest.TestCase):
 
         with patch.dict(sys.modules, {"Jetson": None, "Jetson.GPIO": None}):
             with self.assertRaisesRegex(RuntimeError, "Jetson.GPIO"):
-                module.GPIOOutputPin("GPIO-09")
+                module.GPIOOutputPin("GPIO09")
 
-    def test_manual_gpio_defaults_to_gpio_09(self) -> None:
+    def test_manual_gpio_defaults_to_gpio09_board_pin(self) -> None:
         module = load_module("manual_gpio")
         parser = module.build_parser()
 
         action = parser._option_string_actions["--pin"]
 
-        self.assertEqual("GPIO-09", module.DEFAULT_TRIGGER_PIN)
-        self.assertEqual("GPIO-09", parser.parse_args([]).pin)
-        self.assertIn("GPIO-09", action.help)
+        self.assertEqual(7, module.DEFAULT_TRIGGER_PIN)
+        self.assertEqual(7, parser.parse_args([]).pin)
+        self.assertIn("GPIO09", action.help)
 
     def test_reject_scheduler_exposes_pin_backend_name(self) -> None:
         module = load_module("cap_line_runtime")
 
         class FakePin:
-            backend_name = "Jetson.GPIO CVM"
+            backend_name = "Jetson.GPIO BOARD"
 
             def __init__(self, pin):
                 self.pin = pin
@@ -122,14 +121,14 @@ class GPIOOutputPinTests(unittest.TestCase):
                 return None
 
         scheduler = module.RejectScheduler(
-            trigger_pin="GPIO-09",
+            trigger_pin=7,
             trigger_duration=0.01,
             pin_factory=FakePin,
             log_fn=lambda *_args, **_kwargs: None,
         )
         try:
-            self.assertEqual("GPIO-09", scheduler.trigger_pin)
-            self.assertEqual("Jetson.GPIO CVM", scheduler.backend_name)
+            self.assertEqual(7, scheduler.trigger_pin)
+            self.assertEqual("Jetson.GPIO BOARD", scheduler.backend_name)
         finally:
             scheduler.close()
 

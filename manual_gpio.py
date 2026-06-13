@@ -28,7 +28,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pin",
         default=DEFAULT_TRIGGER_PIN,
-        help=f"Jetson.GPIO pin to control (default: {DEFAULT_TRIGGER_PIN})",
+        help=(
+            f"Jetson.GPIO BOARD pin to control "
+            f"(default: {DEFAULT_TRIGGER_PIN}, GPIO09)"
+        ),
     )
 
     subparsers = parser.add_subparsers(dest="command")

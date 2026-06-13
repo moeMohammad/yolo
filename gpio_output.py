@@ -1,25 +1,25 @@
 from __future__ import annotations
 
 
-DEFAULT_TRIGGER_PIN = "GPIO-09"
+GPIO09 = 7  # physical pin 7 on 40-pin header (BOARD numbering)
+DEFAULT_TRIGGER_PIN = GPIO09
 
 
-def _normalize_cvm_gpio_name(pin_name: str) -> str | None:
-    compact_name = pin_name.strip().upper().replace("_", "-")
+def _is_gpio09_alias(pin_text: str) -> bool:
+    compact_name = pin_text.strip().upper().replace("_", "-")
+    if compact_name in {"GPIO09", "GPIO-09", "GPIO-9"}:
+        return True
     if compact_name.startswith("GPIO-"):
         suffix = compact_name[5:]
     elif compact_name.startswith("GPIO"):
         suffix = compact_name[4:]
     else:
-        return None
-
-    if not suffix.isdigit():
-        return None
-    return f"GPIO{int(suffix):02d}"
+        return False
+    return suffix.isdigit() and int(suffix) == 9
 
 
 class GPIOOutputPin:
-    def __init__(self, pin):
+    def __init__(self, pin=DEFAULT_TRIGGER_PIN):
         self.requested_pin = pin
         self.pin = pin
         self._gpio = None
@@ -53,22 +53,19 @@ class GPIOOutputPin:
     @staticmethod
     def _resolve_channel(GPIO, pin):
         if isinstance(pin, int):
-            return GPIO.BCM, pin, "BCM"
+            return GPIO.BOARD, pin, "BOARD"
 
         pin_text = str(pin).strip()
         if not pin_text:
             raise ValueError("GPIO pin cannot be empty")
         if pin_text.isdigit():
-            return GPIO.BCM, int(pin_text), "BCM"
+            return GPIO.BOARD, int(pin_text), "BOARD"
+        if _is_gpio09_alias(pin_text):
+            return GPIO.BOARD, GPIO09, "BOARD"
 
-        cvm_name = _normalize_cvm_gpio_name(pin_text)
-        if cvm_name is not None:
-            return GPIO.CVM, cvm_name, "CVM"
-
-        channel = pin_text.upper()
-        if channel.startswith("GP"):
-            return GPIO.TEGRA_SOC, channel, "TEGRA_SOC"
-        return GPIO.CVM, channel, "CVM"
+        raise ValueError(
+            f"Unsupported GPIO pin {pin!r}. Use a BOARD pin number or GPIO09."
+        )
 
     def on(self) -> None:
         self._gpio.output(self.pin, self._gpio.HIGH)

@@ -44,20 +44,20 @@ class CapLineDefaultModelTests(unittest.TestCase):
         self.assertEqual("dirtv2.onnx", runtime_module.DEFAULT_MODEL)
         self.assertEqual(runtime_module.DEFAULT_MODEL, args.model)
 
-    def test_runtime_trigger_pin_defaults_to_gpio_09(self) -> None:
+    def test_runtime_trigger_pin_defaults_to_gpio09(self) -> None:
         module = load_module("cap_line_runtime")
         parser = module.build_arg_parser()
 
         action = parser._option_string_actions["--trigger-pin"]
 
-        self.assertEqual("GPIO-09", module.DEFAULT_TRIGGER_PIN)
-        self.assertEqual("GPIO-09", parser.parse_args([]).trigger_pin)
-        self.assertIn("GPIO-09", action.help)
+        self.assertEqual(7, module.DEFAULT_TRIGGER_PIN)
+        self.assertEqual(7, parser.parse_args([]).trigger_pin)
+        self.assertIn("GPIO09", action.help)
 
-    def test_ui_trigger_pin_label_mentions_cvm(self) -> None:
+    def test_ui_trigger_pin_label_mentions_board_pin(self) -> None:
         ui_module = load_module("cap_line_ui")
 
-        self.assertEqual("Trigger GPIO (CVM)", ui_module.TRIGGER_PIN_LABEL)
+        self.assertEqual("Trigger GPIO09 (BOARD pin 7)", ui_module.TRIGGER_PIN_LABEL)
 
 
 if __name__ == "__main__":
