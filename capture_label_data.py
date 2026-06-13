@@ -10,10 +10,11 @@ every captured frame to disk.
 from __future__ import annotations
 
 import argparse
-import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+
+import cap_line_runtime as runtime
 
 try:
     import cv2
@@ -68,22 +69,31 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--cams",
         nargs="+",
-        default=["0", "2"],
-        help="camera indices or device paths (default: 0 2)",
+        default=["0", "1"],
+        help="camera indices or device paths (default: 0 1)",
     )
     parser.add_argument(
         "--res",
         type=positive_int,
         nargs=2,
-        default=[640, 480],
+        default=list(runtime.DEFAULT_CAMERA_RESOLUTION),
         metavar=("W", "H"),
-        help="capture width and height (default: 640 480)",
+        help=(
+            "capture width and height "
+            f"(default: {runtime.DEFAULT_CAMERA_RESOLUTION[0]} "
+            f"{runtime.DEFAULT_CAMERA_RESOLUTION[1]})"
+        ),
     )
     parser.add_argument(
         "--fps",
         type=positive_float,
-        default=15.0,
-        help="target capture rate in frames per second (default: 15)",
+        default=float(runtime.DEFAULT_CAMERA_FPS),
+        help=f"target capture rate in frames per second (default: {runtime.DEFAULT_CAMERA_FPS})",
+    )
+    parser.add_argument(
+        "--pixel-format",
+        default=runtime.DEFAULT_CAMERA_PIXEL_FORMAT,
+        help="V4L2 pixel format to force on the camera hardware (default: YUYV)",
     )
     parser.add_argument(
         "--exposure",
@@ -123,58 +133,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def parse_cameras(cam_args: list[str]) -> tuple[list[object], list[str]]:
-    cam_list: list[object] = []
-    device_paths: list[str] = []
-
-    for cam in cam_args:
-        try:
-            cam_index = int(cam)
-            cam_list.append(cam_index)
-            device_paths.append(f"/dev/video{cam_index}")
-        except ValueError:
-            cam_list.append(cam)
-            device_paths.append(cam)
-
-    return cam_list, device_paths
-
-
-def set_camera_controls(device_path: str, exposure_value: int) -> None:
-    print(f"Configuring camera {device_path}...")
-    try:
-        subprocess.run(
-            ["v4l2-ctl", "-d", device_path, "-c", "auto_exposure=1"],
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        print(f"Failed to set auto_exposure=1 on {device_path}: {exc}")
-
-    try:
-        subprocess.run(
-            ["v4l2-ctl", "-d", device_path, "-c", f"exposure_time_absolute={exposure_value}"],
-            check=True,
-        )
-        print(f"{device_path}: exposure_time_absolute={exposure_value}")
-    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        print(f"Failed to set exposure_time_absolute on {device_path}: {exc}")
-
-
-def open_cam(src: object, width: int, height: int, fps: float):
-    cv2_module = require_cv2()
-    cap = cv2_module.VideoCapture(src, cv2_module.CAP_V4L2)
-    cap.set(cv2_module.CAP_PROP_FOURCC, cv2_module.VideoWriter_fourcc(*"MJPG"))
-    cap.set(cv2_module.CAP_PROP_FRAME_WIDTH, width)
-    cap.set(cv2_module.CAP_PROP_FRAME_HEIGHT, height)
-    cap.set(cv2_module.CAP_PROP_FPS, fps)
-    try:
-        cap.set(cv2_module.CAP_PROP_BUFFERSIZE, 1)
-    except Exception:
-        pass
-    if not cap.isOpened():
-        raise RuntimeError(f"Cannot open camera source {src}")
-    return cap
-
-
 def sanitize_camera_label(camera_label: object) -> str:
     text = str(camera_label)
     return "".join(ch if ch.isalnum() else "_" for ch in text).strip("_") or "camera"
@@ -210,19 +168,41 @@ def save_frames(
 
 
 def capture_loop(args: argparse.Namespace) -> int:
+    args.pixel_format = runtime.normalize_camera_pixel_format(args.pixel_format)
+    if args.pixel_format != runtime.DEFAULT_CAMERA_PIXEL_FORMAT:
+        raise ValueError(
+            f"--pixel-format must be {runtime.DEFAULT_CAMERA_PIXEL_FORMAT} "
+            "for Arducam B0495 cameras"
+        )
+
     output_dir = args.output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    cam_list, device_paths = parse_cameras(args.cams)
+    cam_list, device_paths = runtime.parse_cameras(args.cams)
     width, height = args.res
 
     for device_path in device_paths:
-        set_camera_controls(device_path, args.exposure)
+        runtime.set_camera_format(
+            device_path,
+            width,
+            height,
+            int(args.fps),
+            pixel_format=args.pixel_format,
+        )
+        runtime.set_camera_controls(device_path, args.exposure)
 
     cameras = []
     try:
         for cam in cam_list:
-            cameras.append(open_cam(cam, width, height, args.fps))
+            cameras.append(
+                runtime.open_cam(
+                    cam,
+                    width,
+                    height,
+                    int(args.fps),
+                    args.pixel_format,
+                )
+            )
     except Exception:
         for camera in cameras:
             camera.release()

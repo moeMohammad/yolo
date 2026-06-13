@@ -16,6 +16,7 @@ import csv
 import heapq
 import math
 import os
+import re
 from queue import Queue
 import subprocess
 import threading
@@ -54,6 +55,10 @@ DEFAULT_DEFECT_MARGIN = 0.08
 DEFAULT_SINGLE_CAMERA_DEFECT_SCORE = 0.97
 DEFAULT_FINALIZE_QUIET_MS = 30.0
 DEFAULT_LATENCY_COMPENSATION_MS = 50.0
+DEFAULT_CAMERA_RESOLUTION = [960, 600]
+DEFAULT_CAMERA_FPS = 60
+DEFAULT_CAMERA_PIXEL_FORMAT = "YUYV"
+SUPPORTED_CAMERA_PIXEL_FORMATS = frozenset({"YUYV", "YUY2"})
 TIMING_LOG_HEADERS = [
     "recorded_at",
     "event_id",
@@ -528,18 +533,145 @@ def set_camera_controls(device_path: str, exposure_value: int, *, log_fn: Callab
         log_fn(f"Failed to set exposure_time_absolute on {device_path}: {exc}")
 
 
+def _run_v4l2_ctl(
+    device_path: str,
+    *args: str,
+    check: bool = True,
+) -> subprocess.CompletedProcess[str] | None:
+    try:
+        return subprocess.run(
+            ["v4l2-ctl", "-d", device_path, *args],
+            check=check,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def _read_v4l2_video_format(device_path: str) -> tuple[int | None, int | None, str | None, float | None]:
+    fmt_result = _run_v4l2_ctl(device_path, "--get-fmt-video", check=False)
+    parm_result = _run_v4l2_ctl(device_path, "--get-parm", check=False)
+    width = height = None
+    pixel_format = None
+    fps = None
+
+    if fmt_result and fmt_result.stdout:
+        size_match = re.search(r"Width/Height\s*:\s*(\d+)/(\d+)", fmt_result.stdout)
+        if size_match:
+            width = int(size_match.group(1))
+            height = int(size_match.group(2))
+        format_match = re.search(r"Pixel Format\s*:\s*'([A-Z0-9]+)'", fmt_result.stdout)
+        if format_match:
+            pixel_format = format_match.group(1)
+
+    if parm_result and parm_result.stdout:
+        fps_match = re.search(
+            r"Frames per second:\s*([0-9.]+)",
+            parm_result.stdout,
+        )
+        if fps_match:
+            fps = float(fps_match.group(1))
+
+    return width, height, pixel_format, fps
+
+
+def normalize_camera_pixel_format(pixel_format: str) -> str:
+    normalized = str(pixel_format).strip().upper()
+    if normalized in SUPPORTED_CAMERA_PIXEL_FORMATS:
+        return DEFAULT_CAMERA_PIXEL_FORMAT
+    return normalized
+
+
+def _pixel_formats_match(requested: str, actual: str | None) -> bool:
+    if actual is None:
+        return True
+    return normalize_camera_pixel_format(actual) == normalize_camera_pixel_format(requested)
+
+
+def set_camera_format(
+    device_path: str,
+    width: int,
+    height: int,
+    fps: int,
+    *,
+    pixel_format: str = DEFAULT_CAMERA_PIXEL_FORMAT,
+    log_fn: Callable[..., None] = print,
+) -> None:
+    pixel_format = normalize_camera_pixel_format(pixel_format)
+    commands = [
+        [
+            "v4l2-ctl",
+            "-d",
+            device_path,
+            (
+                f"--set-fmt-video=width={int(width)},height={int(height)},"
+                f"pixelformat={pixel_format}"
+            ),
+        ],
+        ["v4l2-ctl", "-d", device_path, f"--set-parm={int(fps)}"],
+    ]
+    for command in commands:
+        try:
+            subprocess.run(command, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            log_fn(f"Failed to set camera format on {device_path}: {exc}")
+            return
+
+    actual_width, actual_height, actual_format, actual_fps = _read_v4l2_video_format(device_path)
+    mismatch = (
+        actual_width != int(width)
+        or actual_height != int(height)
+        or not _pixel_formats_match(pixel_format, actual_format)
+        or (actual_fps is not None and abs(actual_fps - float(fps)) >= 1.0)
+    )
+    if mismatch:
+        log_fn(
+            f"[CAMERA][WARN] {device_path}: re-applying requested format "
+            f"{int(width)}x{int(height)}@{int(fps)} {pixel_format}; "
+            f"hardware reported "
+            f"{actual_width}x{actual_height}@{actual_fps} {actual_format}"
+        )
+        for command in commands:
+            try:
+                subprocess.run(command, check=True)
+            except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+                log_fn(f"Failed to re-apply camera format on {device_path}: {exc}")
+                return
+        actual_width, actual_height, actual_format, actual_fps = _read_v4l2_video_format(
+            device_path
+        )
+        if (
+            actual_width != int(width)
+            or actual_height != int(height)
+            or not _pixel_formats_match(pixel_format, actual_format)
+            or (actual_fps is not None and abs(actual_fps - float(fps)) >= 1.0)
+        ):
+            log_fn(
+                f"[CAMERA][WARN] {device_path}: hardware still reports "
+                f"{actual_width}x{actual_height}@{actual_fps} {actual_format} "
+                f"after forcing {int(width)}x{int(height)}@{int(fps)} {pixel_format}"
+            )
+
+    log_fn(
+        f"{device_path}: forced format "
+        f"{int(width)}x{int(height)}@{int(fps)} {pixel_format}"
+    )
+
+
 def open_cam(
     src: object,
     width: int | None = None,
     height: int | None = None,
     fps: int | None = None,
-    pixel_format: str = "MJPG",
+    pixel_format: str = DEFAULT_CAMERA_PIXEL_FORMAT,
 ):
+    pixel_format = normalize_camera_pixel_format(pixel_format)
     import cv2
 
     cap = cv2.VideoCapture(src, cv2.CAP_V4L2)
     if pixel_format:
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*pixel_format.upper()))
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*pixel_format))
     if width is not None:
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     if height is not None:
@@ -2058,6 +2190,11 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--belt-speed-mm-per-s must be greater than 0")
     if args.latency_compensation_ms < 0:
         raise ValueError("--latency-compensation-ms must be 0 or greater")
+    args.pixel_format = normalize_camera_pixel_format(args.pixel_format)
+    if args.pixel_format != DEFAULT_CAMERA_PIXEL_FORMAT:
+        raise ValueError(
+            f"--pixel-format must be {DEFAULT_CAMERA_PIXEL_FORMAT} for Arducam B0495 cameras"
+        )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -2072,11 +2209,22 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cams",
         nargs=2,
-        default=["0", "2"],
+        default=["0", "1"],
         help="two camera indices or device paths",
     )
-    parser.add_argument("--res", type=int, nargs=2, default=[640, 480], help="capture W H")
-    parser.add_argument("--fps", type=int, default=15)
+    parser.add_argument(
+        "--res",
+        type=int,
+        nargs=2,
+        default=list(DEFAULT_CAMERA_RESOLUTION),
+        help="capture W H",
+    )
+    parser.add_argument("--fps", type=int, default=DEFAULT_CAMERA_FPS)
+    parser.add_argument(
+        "--pixel-format",
+        default=DEFAULT_CAMERA_PIXEL_FORMAT,
+        help="V4L2 pixel format to force on the camera hardware (default: YUYV)",
+    )
     parser.add_argument(
         "--exposure",
         type=int,
@@ -2199,12 +2347,22 @@ def run_detection(
     show_opencv_preview = not args.no_display
 
     try:
+        width, height = args.res
         for device_path in device_paths:
+            set_camera_format(
+                device_path,
+                width,
+                height,
+                args.fps,
+                pixel_format=args.pixel_format,
+                log_fn=log_fn,
+            )
             set_camera_controls(device_path, args.exposure, log_fn=log_fn)
 
-        width, height = args.res
         for camera_source in camera_sources:
-            cameras.append(open_cam(camera_source, width, height, args.fps))
+            cameras.append(
+                open_cam(camera_source, width, height, args.fps, args.pixel_format)
+            )
 
         if show_opencv_preview:
             cv2.namedWindow("Cap Line Runtime", cv2.WINDOW_NORMAL)

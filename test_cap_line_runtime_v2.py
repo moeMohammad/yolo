@@ -91,7 +91,7 @@ class CapLineRuntimeV2DecisionTests(unittest.TestCase):
         self.assertLess(self.module.DEFAULT_TRIGGER_OFFSET_S, 0.0)
         self.assertEqual(self.module.DEFAULT_TRIGGER_OFFSET_S, args.trigger_offset_s)
         self.assertEqual([960, 600], args.res)
-        self.assertEqual(30, self.module.DEFAULT_CAMERA_FPS)
+        self.assertEqual(60, self.module.DEFAULT_CAMERA_FPS)
         self.assertEqual(self.module.DEFAULT_CAMERA_FPS, args.fps)
         self.assertEqual("YUYV", args.pixel_format)
 
@@ -99,8 +99,19 @@ class CapLineRuntimeV2DecisionTests(unittest.TestCase):
         commands = []
         original_run = self.module.subprocess.run
 
-        def fake_run(command, check):
+        def fake_run(command, check=False, capture_output=False, text=False):
             commands.append((list(command), check))
+            if "--get-fmt-video" in command:
+                return types.SimpleNamespace(
+                    stdout="Width/Height      : 960/600\nPixel Format      : 'YUYV' (YUYV 4:2:2)\n",
+                    returncode=0,
+                )
+            if "--get-parm" in command:
+                return types.SimpleNamespace(
+                    stdout="Frames per second: 10.000\n",
+                    returncode=0,
+                )
+            return types.SimpleNamespace(returncode=0)
 
         try:
             self.module.subprocess.run = fake_run
@@ -125,6 +136,15 @@ class CapLineRuntimeV2DecisionTests(unittest.TestCase):
             commands[0][0],
         )
         self.assertEqual(["v4l2-ctl", "-d", "/dev/video0", "--set-parm=10"], commands[1][0])
+
+    def test_yuy2_pixel_format_is_normalized_to_yuyv(self) -> None:
+        self.assertEqual("YUYV", self.module.normalize_camera_pixel_format("YUY2"))
+
+    def test_validate_args_rejects_non_yuyv_pixel_format(self) -> None:
+        parser = self.module.build_arg_parser()
+        args = parser.parse_args(["--pixel-format", "MJPG"])
+        with self.assertRaisesRegex(ValueError, "YUYV"):
+            self.module.validate_args(args)
 
     def test_triggers_on_highest_defect_score_above_threshold(self) -> None:
         tracked_cap = build_tracked_cap(

@@ -231,13 +231,13 @@ if PYQT_AVAILABLE:
             config_form = base_ui.QFormLayout(config_group)
             self.model_input = base_ui.QLineEdit(DEFAULT_MODEL)
             self.cam0_input = base_ui.QLineEdit("0")
-            self.cam1_input = base_ui.QLineEdit("2")
+            self.cam1_input = base_ui.QLineEdit("1")
             self.width_spin = base_ui.QSpinBox()
             self.width_spin.setRange(160, 4096)
-            self.width_spin.setValue(640)
+            self.width_spin.setValue(cap_line_runtime_v2.DEFAULT_CAMERA_RESOLUTION[0])
             self.height_spin = base_ui.QSpinBox()
             self.height_spin.setRange(120, 4096)
-            self.height_spin.setValue(480)
+            self.height_spin.setValue(cap_line_runtime_v2.DEFAULT_CAMERA_RESOLUTION[1])
             self.fps_spin = base_ui.QSpinBox()
             self.fps_spin.setRange(1, 240)
             self.fps_spin.setValue(cap_line_runtime_v2.DEFAULT_CAMERA_FPS)
@@ -389,10 +389,11 @@ if PYQT_AVAILABLE:
             args.model = self.model_input.text().strip() or DEFAULT_MODEL
             args.cams = [
                 self.cam0_input.text().strip() or "0",
-                self.cam1_input.text().strip() or "2",
+                self.cam1_input.text().strip() or "1",
             ]
             args.res = [self.width_spin.value(), self.height_spin.value()]
             args.fps = self.fps_spin.value()
+            args.pixel_format = cap_line_runtime_v2.DEFAULT_CAMERA_PIXEL_FORMAT
             args.exposure = self.exposure_spin.value()
             args.tracking_threshold = self.tracking_threshold_spin.value()
             args.reject_threshold = self.reject_threshold_spin.value()

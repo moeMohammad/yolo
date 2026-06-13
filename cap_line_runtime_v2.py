@@ -56,9 +56,9 @@ GLOBAL_DETECTION_THRESHOLD = TRACKING_DETECTION_THRESHOLD
 DUPLICATE_BOX_IOU_THRESHOLD = 0.65
 DEFAULT_DEBUG_BURST_BEFORE_FRAMES = 3
 DEFAULT_DEBUG_BURST_AFTER_FRAMES = 3
-DEFAULT_CAMERA_RESOLUTION = [960, 600]
-DEFAULT_CAMERA_FPS = 30
-DEFAULT_CAMERA_PIXEL_FORMAT = "YUYV"
+DEFAULT_CAMERA_RESOLUTION = base.DEFAULT_CAMERA_RESOLUTION
+DEFAULT_CAMERA_FPS = base.DEFAULT_CAMERA_FPS
+DEFAULT_CAMERA_PIXEL_FORMAT = base.DEFAULT_CAMERA_PIXEL_FORMAT
 DEFAULT_ONNX_INTRA_OP_THREADS = max(1, (os.cpu_count() or 2) // 2)
 DEFAULT_PERF_LOG_INTERVAL_S = 5.0
 DEFAULT_PAIR_MAX_SKEW_MS = 40.0
@@ -131,6 +131,8 @@ copy_frames = base.copy_frames
 infer_model_imgsz_from_name = base.infer_model_imgsz_from_name
 parse_cameras = base.parse_cameras
 set_camera_controls = base.set_camera_controls
+set_camera_format = base.set_camera_format
+normalize_camera_pixel_format = base.normalize_camera_pixel_format
 open_cam = base.open_cam
 resolve_imgsz = base.resolve_imgsz
 preprocess = base.preprocess
@@ -801,40 +803,6 @@ def log_performance_snapshot(
         f"processing_ms={format_optional_float(snapshot.processing_duration_ms)} "
         f"pair_skew_ms={format_optional_float(snapshot.latest_pair_skew_ms)} "
         f"pair_drops={snapshot.stale_pair_drops}"
-    )
-
-
-def set_camera_format(
-    device_path: str,
-    width: int,
-    height: int,
-    fps: int,
-    *,
-    pixel_format: str = DEFAULT_CAMERA_PIXEL_FORMAT,
-    log_fn: Callable[..., None] = print,
-) -> None:
-    pixel_format = str(pixel_format).upper()
-    commands = [
-        [
-            "v4l2-ctl",
-            "-d",
-            device_path,
-            (
-                f"--set-fmt-video=width={int(width)},height={int(height)},"
-                f"pixelformat={pixel_format}"
-            ),
-        ],
-        ["v4l2-ctl", "-d", device_path, f"--set-parm={int(fps)}"],
-    ]
-    for command in commands:
-        try:
-            subprocess.run(command, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-            log_fn(f"Failed to set camera format on {device_path}: {exc}")
-            return
-    log_fn(
-        f"{device_path}: requested format "
-        f"{int(width)}x{int(height)}@{int(fps)} {pixel_format}"
     )
 
 
@@ -2612,8 +2580,11 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--pair-max-skew-ms must be 0 or greater")
     if args.save_queue_warning_threshold < 0:
         raise ValueError("--save-queue-warning-threshold must be 0 or greater")
-    if len(str(args.pixel_format)) != 4:
-        raise ValueError("--pixel-format must be a four-character V4L2 pixel format")
+    args.pixel_format = normalize_camera_pixel_format(args.pixel_format)
+    if args.pixel_format != DEFAULT_CAMERA_PIXEL_FORMAT:
+        raise ValueError(
+            f"--pixel-format must be {DEFAULT_CAMERA_PIXEL_FORMAT} for Arducam B0495 cameras"
+        )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -2631,7 +2602,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cams",
         nargs=2,
-        default=["0", "2"],
+        default=["0", "1"],
         help="two camera indices or device paths",
     )
     parser.add_argument(
@@ -2645,7 +2616,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pixel-format",
         default=DEFAULT_CAMERA_PIXEL_FORMAT,
-        help="four-character V4L2 pixel format, e.g. YUYV or MJPG",
+        help="V4L2 pixel format to force on the camera hardware (default: YUYV)",
     )
     parser.add_argument(
         "--exposure",
