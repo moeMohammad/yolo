@@ -175,6 +175,9 @@ def preprocess(frame, img_size: int = 640):
 draw_anchor_line = base.draw_anchor_line
 draw_boxes = base.draw_boxes
 compose_preview = base.compose_preview
+create_onnx_session = base.create_onnx_session
+LivePreviewPublisher = base.LivePreviewPublisher
+DEFAULT_LIVE_PREVIEW_FPS = base.DEFAULT_LIVE_PREVIEW_FPS
 reference_coordinate = base.reference_coordinate
 did_cross_reference_line = base.did_cross_reference_line
 calculate_trigger_delay = base.calculate_trigger_delay
@@ -1341,21 +1344,6 @@ def postprocess(output, preprocess_meta, conf_threshold: float = TRACKING_DETECT
         conf_threshold=conf_threshold,
     )
     return deduplicate_yolo_boxes(boxes)
-
-
-def create_onnx_session(ort, model_path: str, intra_op_threads: int):
-    session_options = None
-    if hasattr(ort, "SessionOptions"):
-        session_options = ort.SessionOptions()
-        session_options.intra_op_num_threads = max(1, int(intra_op_threads))
-        session_options.inter_op_num_threads = 1
-    if session_options is None:
-        return ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
-    return ort.InferenceSession(
-        model_path,
-        sess_options=session_options,
-        providers=["CPUExecutionProvider"],
-    )
 
 
 def infer_camera_frame(
@@ -2614,6 +2602,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--perf-log-interval-s must be 0 or greater")
     if args.pair_max_skew_ms < 0:
         raise ValueError("--pair-max-skew-ms must be 0 or greater")
+    if args.live_preview_fps < 0:
+        raise ValueError("--live-preview-fps must be 0 or greater")
     if args.save_queue_warning_threshold < 0:
         raise ValueError("--save-queue-warning-threshold must be 0 or greater")
     args.pixel_format = normalize_camera_pixel_format(args.pixel_format)
@@ -2728,6 +2718,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=float,
         default=DEFAULT_PERF_LOG_INTERVAL_S,
         help="seconds between processed-frame performance summaries; 0 disables summaries",
+    )
+    parser.add_argument(
+        "--live-preview-fps",
+        type=float,
+        default=DEFAULT_LIVE_PREVIEW_FPS,
+        help=(
+            "GUI preview refresh rate using latest camera frames; detection overlays "
+            "update at processed_fps (default: "
+            f"{DEFAULT_LIVE_PREVIEW_FPS:g}; 0 disables live preview refresh)"
+        ),
     )
     parser.add_argument(
         "--pair-max-skew-ms",
@@ -2943,7 +2943,9 @@ def run_detection(
             args.latency_compensation_ms,
         )
 
+        active_providers = getattr(sessions[0], "get_providers", lambda: ["unknown"])()
         log_fn(f"Using model: {model_path} (imgsz={model_imgsz})")
+        log_fn(f"ONNX execution provider: {active_providers[0]}")
         log_fn(f"Tracking detection threshold: {args.tracking_threshold:.3f}")
         log_fn(f"Defect reject threshold: {args.reject_threshold:.3f}")
         log_fn(
@@ -2955,6 +2957,12 @@ def run_detection(
                 f"onnx_intra_op_threads={args.onnx_intra_op_threads}"
             )
         )
+        if preview_callback is not None and args.live_preview_fps > 0.0:
+            log_fn(
+                "Live preview: "
+                f"{args.live_preview_fps:g} fps; GUI refresh is decoupled from "
+                "processed_fps"
+            )
         log_fn(
             "Trigger formula: "
             f"physical = {args.nozzle_distance_mm:.3f}mm / {args.belt_speed_mm_per_s:.3f}mm/s "
@@ -2995,6 +3003,19 @@ def run_detection(
             if camera_properties_mismatch(properties)
         ]
         last_trigger_anchor_time: float | None = None
+        live_preview: LivePreviewPublisher | None = None
+        if preview_callback is not None and args.live_preview_fps > 0.0:
+            live_preview = LivePreviewPublisher(
+                camera_readers,
+                preview_callback,
+                anchor_axis=args.anchor_axis,
+                anchor_line_ratio=args.anchor_line_ratio,
+                target_fps=args.live_preview_fps,
+                stop_event=stop_event,
+                time_fn=time_fn,
+                sleep_fn=sleep_fn,
+            )
+            live_preview.start()
 
         def queue_trigger_decision(
             tracked_cap: TrackedCap,
@@ -3217,6 +3238,8 @@ def run_detection(
                 annotated_frames.append(annotated)
 
             preview = compose_preview(annotated_frames)
+            if live_preview is not None:
+                live_preview.update_overlay(all_boxes_by_camera)
             for tracked_cap in touched_caps:
                 tracked_cap.update_review_frames(
                     frames,
@@ -3364,7 +3387,7 @@ def run_detection(
                         f"source={decision.decision_source} votes=[{camera_vote_text}]"
                     )
 
-            if preview_callback is not None and preview is not None:
+            if preview_callback is not None and preview is not None and live_preview is None:
                 preview_callback(preview)
 
             if show_opencv_preview and preview is not None:
@@ -3382,6 +3405,9 @@ def run_detection(
 
         for reader in camera_readers:
             reader.stop()
+
+        if "live_preview" in locals() and live_preview is not None:
+            live_preview.stop()
 
         for camera in cameras:
             camera.release()

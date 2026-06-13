@@ -904,6 +904,133 @@ def compose_preview(frames, pad: int = 6):
     return np.hstack(stacked)
 
 
+DEFAULT_LIVE_PREVIEW_FPS = 30.0
+ONNX_PROVIDER_PREFERENCE = (
+    "TensorrtExecutionProvider",
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider",
+)
+
+
+def create_onnx_session(ort, model_path: str, intra_op_threads: int):
+    session_options = None
+    if hasattr(ort, "SessionOptions"):
+        session_options = ort.SessionOptions()
+        session_options.intra_op_num_threads = max(1, int(intra_op_threads))
+        session_options.inter_op_num_threads = 1
+
+    available_providers = list(getattr(ort, "get_available_providers", lambda: [])())
+    providers = [
+        provider
+        for provider in ONNX_PROVIDER_PREFERENCE
+        if provider in available_providers
+    ]
+    if not providers:
+        providers = ["CPUExecutionProvider"]
+
+    if session_options is None:
+        return ort.InferenceSession(model_path, providers=providers)
+    return ort.InferenceSession(
+        model_path,
+        sess_options=session_options,
+        providers=providers,
+    )
+
+
+class LivePreviewPublisher:
+    """Publish smooth camera previews while detection runs at a lower rate."""
+
+    def __init__(
+        self,
+        camera_readers,
+        preview_callback: Callable[[object], None],
+        *,
+        anchor_axis: str,
+        anchor_line_ratio: float,
+        target_fps: float = DEFAULT_LIVE_PREVIEW_FPS,
+        stop_event=None,
+        time_fn: Callable[[], float] = time.monotonic,
+        sleep_fn: Callable[[float], None] = time.sleep,
+    ):
+        self._camera_readers = list(camera_readers)
+        self._preview_callback = preview_callback
+        self._anchor_axis = anchor_axis
+        self._anchor_line_ratio = anchor_line_ratio
+        self._target_fps = float(target_fps)
+        self._external_stop_event = stop_event
+        self._stop_event = threading.Event()
+        self._time_fn = time_fn
+        self._sleep_fn = sleep_fn
+        self._overlay_lock = threading.Lock()
+        self._boxes_by_camera: list[list[list[float]]] = []
+        self._thread = threading.Thread(
+            target=self._run,
+            name="cap-line-live-preview",
+            daemon=True,
+        )
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self._thread.join()
+
+    def update_overlay(self, boxes_by_camera: list[list[list[float]]]) -> None:
+        with self._overlay_lock:
+            self._boxes_by_camera = [
+                [list(box) for box in boxes]
+                for boxes in boxes_by_camera
+            ]
+
+    def _should_stop(self) -> bool:
+        if self._stop_event.is_set():
+            return True
+        return (
+            self._external_stop_event is not None
+            and self._external_stop_event.is_set()
+        )
+
+    def _run(self) -> None:
+        min_interval_s = (
+            0.0
+            if self._target_fps <= 0.0
+            else 1.0 / self._target_fps
+        )
+        while not self._should_stop():
+            loop_started_at = self._time_fn()
+            latest_frames = [reader.latest() for reader in self._camera_readers]
+            if all(frame is not None for frame in latest_frames):
+                frames = [frame.frame for frame in latest_frames]
+                with self._overlay_lock:
+                    overlay = [
+                        [list(box) for box in boxes]
+                        for boxes in self._boxes_by_camera
+                    ]
+                if len(overlay) != len(frames):
+                    overlay = [[] for _ in frames]
+
+                annotated_frames = []
+                for frame, boxes in zip(frames, overlay):
+                    annotated = draw_boxes(frame.copy(), boxes)
+                    draw_anchor_line(
+                        annotated,
+                        self._anchor_axis,
+                        self._anchor_line_ratio,
+                    )
+                    annotated_frames.append(annotated)
+
+                preview = compose_preview(annotated_frames)
+                if preview is not None:
+                    self._preview_callback(preview)
+
+            if min_interval_s > 0.0 and not self._should_stop():
+                elapsed_s = self._time_fn() - loop_started_at
+                remaining_s = min_interval_s - elapsed_s
+                if remaining_s > 0.0:
+                    self._sleep_fn(remaining_s)
+
+
 def box_iou(box_a: list[float], box_b: list[float]) -> float:
     ax1, ay1, ax2, ay2 = box_a[:4]
     bx1, by1, bx2, by2 = box_b[:4]
@@ -2368,7 +2495,7 @@ def run_detection(
             cv2.namedWindow("Cap Line Runtime", cv2.WINDOW_NORMAL)
             display_opened = True
 
-        session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+        session = create_onnx_session(ort, model_path, args.onnx_intra_op_threads)
         input_meta = session.get_inputs()[0]
         input_name = input_meta.name
         model_imgsz = resolve_imgsz(input_meta, args.imgsz, preset_imgsz)
