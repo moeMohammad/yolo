@@ -639,7 +639,7 @@ class CapLineRuntimeV2DecisionTests(unittest.TestCase):
         self.assertIsNone(decision.final_score)
         self.assertEqual("no_observations", decision.decision_source)
 
-    def test_defect_before_actuation_line_waits_until_box_center_crosses(self) -> None:
+    def test_defect_before_actuation_line_waits_until_box_spans_line(self) -> None:
         manager = self.module.TrackedCapManager(
             merge_window_seconds=0.150,
             camera_count=2,
@@ -698,6 +698,60 @@ class CapLineRuntimeV2DecisionTests(unittest.TestCase):
         self.assertEqual("anchor_line", decision.anchor_source)
         self.assertAlmostEqual(2.000, decision.anchor_time)
         self.assertAlmostEqual(3.000, decision.requested_fire_time)
+
+    def test_box_entirely_before_actuation_line_does_not_trigger(self) -> None:
+        manager = self.module.TrackedCapManager(
+            merge_window_seconds=0.150,
+            camera_count=2,
+            timing_camera_index=0,
+            anchor_axis="x",
+            anchor_line_ratio=0.5,
+            finalize_quiet_seconds=0.030,
+        )
+        manager.update(
+            [
+                self.module.TrackObservation(
+                    camera_index=0,
+                    track_id=1,
+                    class_id=1,
+                    box=[20.0, 10.0, 45.0, 30.0, 0.90, 1],
+                    timestamp=1.000,
+                    frame_size=(100, 40),
+                )
+            ],
+            [],
+        )
+        tracked_cap = manager.open_caps()[0]
+
+        self.assertIsNone(tracked_cap.actuation_time)
+
+    def test_box_entirely_after_actuation_line_does_not_trigger_on_first_sight(
+        self,
+    ) -> None:
+        manager = self.module.TrackedCapManager(
+            merge_window_seconds=0.150,
+            camera_count=2,
+            timing_camera_index=0,
+            anchor_axis="x",
+            anchor_line_ratio=0.5,
+            finalize_quiet_seconds=0.030,
+        )
+        manager.update(
+            [
+                self.module.TrackObservation(
+                    camera_index=0,
+                    track_id=1,
+                    class_id=1,
+                    box=[55.0, 10.0, 75.0, 30.0, 0.90, 1],
+                    timestamp=1.000,
+                    frame_size=(100, 40),
+                )
+            ],
+            [],
+        )
+        tracked_cap = manager.open_caps()[0]
+
+        self.assertIsNone(tracked_cap.actuation_time)
 
     def test_defect_after_clean_actuation_crossing_is_skipped_as_late(self) -> None:
         manager = self.module.TrackedCapManager(
@@ -1836,8 +1890,8 @@ class CapLineRuntimeV2RunLoopTests(unittest.TestCase):
 
         box_schedule = iter(
             [
-                [[18.0, 10.0, 28.0, 20.0, 0.96, 0]],
-                [[18.0, 10.0, 28.0, 20.0, 0.94, 0]],
+                [[12.0, 10.0, 20.0, 20.0, 0.96, 0]],
+                [[12.0, 10.0, 20.0, 20.0, 0.94, 0]],
                 [],
                 [],
             ]

@@ -1065,6 +1065,25 @@ def box_center_value(box: list[float], axis: str) -> float:
     return center_x if axis == "x" else center_y
 
 
+def box_edge_values(box: list[float], axis: str) -> tuple[float, float]:
+    x1, y1, x2, y2 = box[:4]
+    if axis == "x":
+        return float(x1), float(x2)
+    return float(y1), float(y2)
+
+
+def box_spans_line_coordinate(
+    box: list[float],
+    *,
+    axis: str,
+    line_coordinate: float,
+) -> bool:
+    leading_edge, trailing_edge = box_edge_values(box, axis)
+    lower_edge = min(leading_edge, trailing_edge)
+    upper_edge = max(leading_edge, trailing_edge)
+    return lower_edge <= line_coordinate <= upper_edge
+
+
 def opposite_axis(axis: str) -> str:
     return "y" if axis == "x" else "x"
 
@@ -1190,10 +1209,24 @@ def did_cross_reference_line(
     axis: str,
     line_coordinate: float,
 ) -> bool:
-    current_value = box_center_value(current_box, axis)
-    if previous_box is None:
-        return math.isclose(current_value, line_coordinate, abs_tol=1.0)
+    if not box_spans_line_coordinate(
+        current_box,
+        axis=axis,
+        line_coordinate=line_coordinate,
+    ):
+        return False
 
+    if previous_box is None:
+        return True
+
+    if box_spans_line_coordinate(
+        previous_box,
+        axis=axis,
+        line_coordinate=line_coordinate,
+    ):
+        return False
+
+    current_value = box_center_value(current_box, axis)
     previous_value = box_center_value(previous_box, axis)
     lower = min(previous_value, current_value)
     upper = max(previous_value, current_value)

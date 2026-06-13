@@ -1437,24 +1437,22 @@ def did_reach_actuation_line(
     line_coordinate: float,
     min_axis_motion_px: float = 1.0,
 ) -> bool:
-    if did_cross_reference_line(
-        previous_box,
+    del min_axis_motion_px
+    if not base.box_spans_line_coordinate(
         current_box,
         axis=axis,
         line_coordinate=line_coordinate,
     ):
-        return True
-    current_value = base.box_center_value(current_box, axis)
-    if previous_box is None:
-        return current_value >= line_coordinate
-
-    previous_value = base.box_center_value(previous_box, axis)
-    axis_delta = current_value - previous_value
-    if abs(axis_delta) < min_axis_motion_px:
         return False
-    if axis_delta > 0.0:
-        return previous_value >= line_coordinate and current_value >= line_coordinate
-    return previous_value <= line_coordinate and current_value <= line_coordinate
+
+    if previous_box is None:
+        return True
+
+    return not base.box_spans_line_coordinate(
+        previous_box,
+        axis=axis,
+        line_coordinate=line_coordinate,
+    )
 
 
 @dataclass
@@ -1593,23 +1591,32 @@ class TrackedCap:
 
         del timing_camera_index
 
-        if self.actuation_time is not None:
-            if camera_was_new:
-                self.refresh_actuation_snapshot()
-            elif math.isclose(
-                observation.timestamp,
-                self.actuation_time,
-                rel_tol=0.0,
-                abs_tol=1e-9,
-            ):
-                self._add_actuation_observation(observation)
-            return
-
         line_coordinate = reference_coordinate(
             observation.frame_size,
             anchor_axis,
             anchor_line_ratio,
         )
+        at_actuation_line = base.box_spans_line_coordinate(
+            observation.box,
+            axis=anchor_axis,
+            line_coordinate=line_coordinate,
+        )
+
+        if self.actuation_time is not None:
+            if camera_was_new:
+                self.refresh_actuation_snapshot()
+            elif (
+                at_actuation_line
+                and math.isclose(
+                    observation.timestamp,
+                    self.actuation_time,
+                    rel_tol=0.0,
+                    abs_tol=1e-9,
+                )
+            ):
+                self._add_actuation_observation(observation)
+            return
+
         if did_reach_actuation_line(
             previous_box,
             observation.box,
