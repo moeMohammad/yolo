@@ -231,7 +231,7 @@ if PYQT_AVAILABLE:
             config_form = base_ui.QFormLayout(config_group)
             self.model_input = base_ui.QLineEdit(DEFAULT_MODEL)
             self.cam0_input = base_ui.QLineEdit("0")
-            self.cam1_input = base_ui.QLineEdit("1")
+            self.cam1_input = base_ui.QLineEdit("3")
             self.width_spin = base_ui.QSpinBox()
             self.width_spin.setRange(160, 4096)
             self.width_spin.setValue(cap_line_runtime_v2.DEFAULT_CAMERA_RESOLUTION[0])
@@ -275,7 +275,7 @@ if PYQT_AVAILABLE:
             self.trigger_gap_spin.setDecimals(3)
             self.trigger_gap_spin.setValue(0.0)
             self.timing_camera_combo = base_ui.QComboBox()
-            self.timing_camera_combo.addItems(["0", "1"])
+            self.timing_camera_combo.addItems(["0", "3"])
             self.anchor_axis_combo = base_ui.QComboBox()
             self.anchor_axis_combo.addItems(["x", "y"])
             self.anchor_line_spin = base_ui.QDoubleSpinBox()
@@ -389,7 +389,7 @@ if PYQT_AVAILABLE:
             args.model = self.model_input.text().strip() or DEFAULT_MODEL
             args.cams = [
                 self.cam0_input.text().strip() or "0",
-                self.cam1_input.text().strip() or "1",
+                self.cam1_input.text().strip() or "3",
             ]
             args.res = [self.width_spin.value(), self.height_spin.value()]
             args.fps = self.fps_spin.value()

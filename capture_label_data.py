@@ -69,8 +69,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--cams",
         nargs="+",
-        default=["0", "1"],
-        help="camera indices or device paths (default: 0 1)",
+        default=["0", "3"],
+        help="camera indices or device paths (default: 0 3)",
     )
     parser.add_argument(
         "--res",

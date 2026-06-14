@@ -2599,7 +2599,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cams",
         nargs=2,
-        default=["0", "1"],
+        default=["0", "3"],
         help="two camera indices or device paths",
     )
     parser.add_argument(
