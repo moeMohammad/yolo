@@ -905,6 +905,7 @@ def compose_preview(frames, pad: int = 6):
 
 
 DEFAULT_LIVE_PREVIEW_FPS = 30.0
+DEFAULT_LIVE_PREVIEW_MAX_EXTRAPOLATION_S = 0.35
 ONNX_PROVIDER_PREFERENCE = (
     "TensorrtExecutionProvider",
     "CUDAExecutionProvider",
@@ -937,6 +938,127 @@ def create_onnx_session(ort, model_path: str, intra_op_threads: int):
     )
 
 
+@dataclass(frozen=True)
+class LivePreviewOverlaySnapshot:
+    boxes_by_camera: list[list[list[float]]]
+    timestamps: list[float | None] = field(default_factory=list)
+    sequences: list[int | None] = field(default_factory=list)
+
+
+def copy_preview_boxes_by_camera(
+    boxes_by_camera: list[list[list[float]]],
+) -> list[list[list[float]]]:
+    return [
+        [[float(value) for value in box] for box in camera_boxes]
+        for camera_boxes in boxes_by_camera
+    ]
+
+
+def live_preview_snapshot_from_frame_pair(
+    frame_pair: object,
+    boxes_by_camera: list[list[list[float]]],
+) -> LivePreviewOverlaySnapshot:
+    timestamps = [
+        None if timestamp is None else float(timestamp)
+        for timestamp in list(getattr(frame_pair, "timestamps", []))
+    ]
+    sequences = [
+        None if sequence is None else int(sequence)
+        for sequence in list(getattr(frame_pair, "sequences", []))
+    ]
+    return LivePreviewOverlaySnapshot(
+        boxes_by_camera=copy_preview_boxes_by_camera(boxes_by_camera),
+        timestamps=timestamps,
+        sequences=sequences,
+    )
+
+
+def list_get_or_none(values: list, index: int):
+    if index < 0 or index >= len(values):
+        return None
+    return values[index]
+
+
+def shifted_box(box: list[float], shift_x: float, shift_y: float) -> list[float]:
+    predicted = [float(value) for value in box]
+    predicted[0] += shift_x
+    predicted[1] += shift_y
+    predicted[2] += shift_x
+    predicted[3] += shift_y
+    return predicted
+
+
+def match_previous_preview_box(
+    current_box: list[float],
+    previous_boxes: list[list[float]],
+) -> list[float] | None:
+    same_class_boxes = [
+        box
+        for box in previous_boxes
+        if len(box) >= 6 and int(box[5]) == int(current_box[5])
+    ]
+    candidates = same_class_boxes or previous_boxes
+    if not candidates:
+        return None
+
+    plausible_candidates = [
+        box
+        for box in candidates
+        if boxes_look_like_same_cap(
+            current_box,
+            box,
+            min_iou=0.01,
+            max_center_distance=3.0,
+            min_size_ratio=0.45,
+        )
+    ]
+    if not plausible_candidates:
+        return None
+
+    return min(plausible_candidates, key=lambda box: normalized_center_distance(current_box, box))
+
+
+def predict_preview_boxes_for_timestamp(
+    current_boxes: list[list[float]],
+    previous_boxes: list[list[float]],
+    *,
+    current_timestamp: float | None,
+    previous_timestamp: float | None,
+    target_timestamp: float | None,
+    max_extrapolation_s: float = DEFAULT_LIVE_PREVIEW_MAX_EXTRAPOLATION_S,
+) -> list[list[float]]:
+    copied_current_boxes = [[float(value) for value in box] for box in current_boxes]
+    if current_timestamp is None or target_timestamp is None:
+        return copied_current_boxes
+
+    extrapolation_s = float(target_timestamp) - float(current_timestamp)
+    if extrapolation_s <= 0.0:
+        return copied_current_boxes
+    if extrapolation_s > float(max_extrapolation_s):
+        return []
+    if previous_timestamp is None:
+        return copied_current_boxes
+
+    history_s = float(current_timestamp) - float(previous_timestamp)
+    if history_s <= 0.0:
+        return copied_current_boxes
+
+    predicted_boxes = []
+    for box in copied_current_boxes:
+        previous_box = match_previous_preview_box(box, previous_boxes)
+        if previous_box is None:
+            predicted_boxes.append(box)
+            continue
+
+        current_center_x, current_center_y = box_center(box)
+        previous_center_x, previous_center_y = box_center(previous_box)
+        shift_x = ((current_center_x - previous_center_x) / history_s) * extrapolation_s
+        shift_y = ((current_center_y - previous_center_y) / history_s) * extrapolation_s
+        predicted_boxes.append(shifted_box(box, shift_x, shift_y))
+
+    return predicted_boxes
+
+
 class LivePreviewPublisher:
     """Publish smooth camera previews while detection runs at a lower rate."""
 
@@ -962,7 +1084,8 @@ class LivePreviewPublisher:
         self._time_fn = time_fn
         self._sleep_fn = sleep_fn
         self._overlay_lock = threading.Lock()
-        self._boxes_by_camera: list[list[list[float]]] = []
+        self._overlay_snapshot: LivePreviewOverlaySnapshot | None = None
+        self._previous_overlay_snapshot: LivePreviewOverlaySnapshot | None = None
         self._thread = threading.Thread(
             target=self._run,
             name="cap-line-live-preview",
@@ -976,12 +1099,23 @@ class LivePreviewPublisher:
         self._stop_event.set()
         self._thread.join()
 
-    def update_overlay(self, boxes_by_camera: list[list[list[float]]]) -> None:
+    def update_overlay(
+        self,
+        frame_pair_or_boxes: object,
+        boxes_by_camera: list[list[list[float]]] | None = None,
+    ) -> None:
+        if boxes_by_camera is None:
+            snapshot = LivePreviewOverlaySnapshot(
+                boxes_by_camera=copy_preview_boxes_by_camera(frame_pair_or_boxes)
+            )
+        else:
+            snapshot = live_preview_snapshot_from_frame_pair(
+                frame_pair_or_boxes,
+                boxes_by_camera,
+            )
         with self._overlay_lock:
-            self._boxes_by_camera = [
-                [list(box) for box in boxes]
-                for boxes in boxes_by_camera
-            ]
+            self._previous_overlay_snapshot = self._overlay_snapshot
+            self._overlay_snapshot = snapshot
 
     def _should_stop(self) -> bool:
         if self._stop_event.is_set():
@@ -1003,12 +1137,13 @@ class LivePreviewPublisher:
             if all(frame is not None for frame in latest_frames):
                 frames = [frame.frame for frame in latest_frames]
                 with self._overlay_lock:
-                    overlay = [
-                        [list(box) for box in boxes]
-                        for boxes in self._boxes_by_camera
-                    ]
-                if len(overlay) != len(frames):
-                    overlay = [[] for _ in frames]
+                    overlay_snapshot = self._overlay_snapshot
+                    previous_overlay_snapshot = self._previous_overlay_snapshot
+                overlay = self._overlay_for_latest_frames(
+                    latest_frames,
+                    overlay_snapshot,
+                    previous_overlay_snapshot,
+                )
 
                 annotated_frames = []
                 for frame, boxes in zip(frames, overlay):
@@ -1029,6 +1164,47 @@ class LivePreviewPublisher:
                 remaining_s = min_interval_s - elapsed_s
                 if remaining_s > 0.0:
                     self._sleep_fn(remaining_s)
+
+    def _overlay_for_latest_frames(
+        self,
+        latest_frames: list[object],
+        overlay_snapshot: LivePreviewOverlaySnapshot | None,
+        previous_overlay_snapshot: LivePreviewOverlaySnapshot | None,
+    ) -> list[list[list[float]]]:
+        if overlay_snapshot is None:
+            return [[] for _frame in latest_frames]
+        if len(overlay_snapshot.boxes_by_camera) != len(latest_frames):
+            return [[] for _frame in latest_frames]
+
+        overlay = []
+        for camera_index, captured_frame in enumerate(latest_frames):
+            current_boxes = overlay_snapshot.boxes_by_camera[camera_index]
+            previous_boxes = (
+                []
+                if previous_overlay_snapshot is None
+                or len(previous_overlay_snapshot.boxes_by_camera) <= camera_index
+                else previous_overlay_snapshot.boxes_by_camera[camera_index]
+            )
+            overlay.append(
+                predict_preview_boxes_for_timestamp(
+                    current_boxes,
+                    previous_boxes,
+                    current_timestamp=list_get_or_none(
+                        overlay_snapshot.timestamps,
+                        camera_index,
+                    ),
+                    previous_timestamp=(
+                        None
+                        if previous_overlay_snapshot is None
+                        else list_get_or_none(
+                            previous_overlay_snapshot.timestamps,
+                            camera_index,
+                        )
+                    ),
+                    target_timestamp=getattr(captured_frame, "timestamp", None),
+                )
+            )
+        return overlay
 
 
 def box_iou(box_a: list[float], box_b: list[float]) -> float:

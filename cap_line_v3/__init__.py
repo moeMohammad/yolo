@@ -1,0 +1,44 @@
+"""Standalone V3 cap-line runtime package."""
+
+from .config import RuntimeConfig, build_arg_parser, config_from_args, parse_args, replace
+from .decision import TrackedCap, decide_decision_ready, decide_tracked_cap
+from .pairing import select_synchronized_frame_pair
+from .preview import overlay_stale_timeout_s, predict_preview_overlay
+from .runtime import postprocess, preprocess, run_detection
+from .types import (
+    CapturedFrame,
+    DetectionHistoryRecord,
+    DetectionPacket,
+    FramePair,
+    RuntimeCallbacks,
+    RuntimePerformanceSnapshot,
+    TimingLogRecord,
+    TrackObservation,
+    TrackedCapDecision,
+)
+
+__all__ = [
+    "CapturedFrame",
+    "DetectionHistoryRecord",
+    "DetectionPacket",
+    "FramePair",
+    "RuntimeCallbacks",
+    "RuntimeConfig",
+    "RuntimePerformanceSnapshot",
+    "TimingLogRecord",
+    "TrackObservation",
+    "TrackedCap",
+    "TrackedCapDecision",
+    "build_arg_parser",
+    "config_from_args",
+    "decide_decision_ready",
+    "decide_tracked_cap",
+    "overlay_stale_timeout_s",
+    "parse_args",
+    "predict_preview_overlay",
+    "postprocess",
+    "preprocess",
+    "replace",
+    "run_detection",
+    "select_synchronized_frame_pair",
+]

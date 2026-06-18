@@ -2696,7 +2696,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=DEFAULT_LIVE_PREVIEW_FPS,
         help=(
             "GUI preview refresh rate using latest camera frames; detection overlays "
-            "update at processed_fps (default: "
+            "are motion-compensated from processed frames (default: "
             f"{DEFAULT_LIVE_PREVIEW_FPS:g}; 0 disables live preview refresh)"
         ),
     )
@@ -2932,7 +2932,7 @@ def run_detection(
             log_fn(
                 "Live preview: "
                 f"{args.live_preview_fps:g} fps; GUI refresh is decoupled from "
-                "processed_fps"
+                "processed_fps with motion-compensated boxes"
             )
         log_fn(
             "Trigger formula: "
@@ -3210,7 +3210,7 @@ def run_detection(
 
             preview = compose_preview(annotated_frames)
             if live_preview is not None:
-                live_preview.update_overlay(all_boxes_by_camera)
+                live_preview.update_overlay(frame_pair, all_boxes_by_camera)
             for tracked_cap in touched_caps:
                 tracked_cap.update_review_frames(
                     frames,

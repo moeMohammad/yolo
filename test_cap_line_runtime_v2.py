@@ -1681,6 +1681,75 @@ class CapLineRuntimeV2TrackingTests(unittest.TestCase):
         self.assertEqual(0.0, paired_result.boxes_by_camera[0][0][0])
         self.assertEqual(1.0, paired_result.boxes_by_camera[1][0][0])
 
+    def test_live_preview_predicts_detection_boxes_to_latest_frame_timestamp(self) -> None:
+        module = self.module
+
+        class FakeFrame:
+            shape = (64, 64, 3)
+
+            def __init__(self, label: str):
+                self.label = label
+
+            def copy(self):
+                return FakeFrame(self.label)
+
+        class FakeReader:
+            def latest(self):
+                return module.CapturedFrame(
+                    camera_index=0,
+                    frame=FakeFrame("live"),
+                    timestamp=1.20,
+                    sequence=3,
+                )
+
+        drawn_boxes = []
+        original_draw_boxes = module.base.draw_boxes
+        original_draw_anchor_line = module.base.draw_anchor_line
+        original_compose_preview = module.base.compose_preview
+
+        def fake_draw_boxes(frame, boxes):
+            drawn_boxes.append((frame.label, [[float(value) for value in box] for box in boxes]))
+            return frame
+
+        stop_event = module.threading.Event()
+        publisher = module.LivePreviewPublisher(
+            [FakeReader()],
+            lambda _preview: stop_event.set(),
+            anchor_axis="x",
+            anchor_line_ratio=0.5,
+            target_fps=30.0,
+            stop_event=stop_event,
+            sleep_fn=lambda _seconds: None,
+        )
+
+        try:
+            module.base.draw_boxes = fake_draw_boxes
+            module.base.draw_anchor_line = lambda frame, _axis, _ratio: frame
+            module.base.compose_preview = lambda frames, pad=6: frames
+
+            publisher.update_overlay(
+                module.build_frame_pair(
+                    [module.CapturedFrame(0, FakeFrame("previous"), 1.00, 1)]
+                ),
+                [[[10.0, 10.0, 20.0, 20.0, 0.90, 1.0]]],
+            )
+            publisher.update_overlay(
+                module.build_frame_pair(
+                    [module.CapturedFrame(0, FakeFrame("processed"), 1.10, 2)]
+                ),
+                [[[20.0, 10.0, 30.0, 20.0, 0.90, 1.0]]],
+            )
+            publisher._run()
+        finally:
+            module.base.draw_boxes = original_draw_boxes
+            module.base.draw_anchor_line = original_draw_anchor_line
+            module.base.compose_preview = original_compose_preview
+
+        self.assertEqual(1, len(drawn_boxes))
+        self.assertEqual("live", drawn_boxes[0][0])
+        self.assertAlmostEqual(30.0, drawn_boxes[0][1][0][0])
+        self.assertAlmostEqual(40.0, drawn_boxes[0][1][0][2])
+
     def test_latest_frame_reader_continues_capture_while_caller_waits(self) -> None:
         module = self.module
 
