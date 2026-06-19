@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import concurrent.futures
 import json
 import os
 import subprocess
@@ -339,6 +340,211 @@ class DirectCameraReader:
         return None
 
 
+class LatestFrameCameraReader:
+    """Continuously drain one camera and expose only its freshest frame."""
+
+    def __init__(
+        self,
+        camera,
+        camera_index: int,
+        *,
+        target_fps: int | float | None,
+        time_fn: Callable[[], float] = time.monotonic,
+        sleep_fn: Callable[[float], None] = time.sleep,
+    ):
+        self.camera = camera
+        self.camera_index = int(camera_index)
+        self.target_fps = None if target_fps is None else float(target_fps)
+        self.time_fn = time_fn
+        self.sleep_fn = sleep_fn
+        self._stop_event = threading.Event()
+        self._lock = threading.Lock()
+        self._latest: CapturedFrame | None = None
+        self._captured = 0
+        self._started = False
+        self._thread = threading.Thread(
+            target=self._run,
+            name=f"cap-line-v3-camera-{self.camera_index}",
+            daemon=True,
+        )
+
+    def start(self) -> None:
+        if self._started:
+            return
+        self._started = True
+        self._thread.start()
+
+    def latest(self) -> CapturedFrame | None:
+        with self._lock:
+            return self._latest
+
+    @property
+    def captured(self) -> int:
+        with self._lock:
+            return int(self._captured)
+
+    @property
+    def sequence(self) -> int:
+        return self.captured
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._started:
+            self._thread.join()
+
+    def _run(self) -> None:
+        min_interval_s = 0.0 if not self.target_fps or self.target_fps <= 0.0 else 1.0 / self.target_fps
+        while not self._stop_event.is_set():
+            started_at = float(self.time_fn())
+            try:
+                ok, frame = self.camera.read()
+            except Exception:
+                ok, frame = False, None
+            captured_at = float(self.time_fn())
+            if ok and frame is not None:
+                with self._lock:
+                    self._captured += 1
+                    self._latest = CapturedFrame(
+                        self.camera_index,
+                        frame,
+                        captured_at,
+                        self._captured,
+                        (captured_at - started_at) * 1000.0,
+                    )
+            elif not self._stop_event.is_set():
+                self.sleep_fn(0.01)
+
+            if min_interval_s > 0.0 and not self._stop_event.is_set():
+                remaining_s = min_interval_s - (float(self.time_fn()) - started_at)
+                if remaining_s > 0.0:
+                    self.sleep_fn(remaining_s)
+
+
+class LivePreviewPublisher:
+    """Publish smooth live previews while inference updates boxes more slowly."""
+
+    def __init__(
+        self,
+        camera_readers,
+        preview_callback: Callable[[object], None],
+        *,
+        anchor_axis: str,
+        anchor_line_ratio: float,
+        preview_fps: int | float,
+        overlay_target_fps: int | float,
+        stop_event=None,
+        compose_preview_fn: Callable[[list[object]], object] | None = None,
+        draw_boxes_fn: Callable[[object, tuple[Box, ...]], object] | None = None,
+        draw_anchor_line_fn: Callable[[object, str, float], object] | None = None,
+        time_fn: Callable[[], float] = time.monotonic,
+        sleep_fn: Callable[[float], None] = time.sleep,
+    ):
+        self.camera_readers = list(camera_readers)
+        self.preview_callback = preview_callback
+        self.anchor_axis = anchor_axis
+        self.anchor_line_ratio = float(anchor_line_ratio)
+        self.preview_fps = float(preview_fps)
+        self.overlay_target_fps = float(overlay_target_fps)
+        self.external_stop_event = stop_event
+        self.compose_preview_fn = compose_preview_fn or compose_preview
+        self.draw_boxes_fn = draw_boxes_fn or draw_boxes
+        self.draw_anchor_line_fn = draw_anchor_line_fn or draw_anchor_line
+        self.time_fn = time_fn
+        self.sleep_fn = sleep_fn
+        self._stop_event = threading.Event()
+        self._overlay_lock = threading.Lock()
+        self._previous_packet: DetectionPacket | None = None
+        self._current_packet: DetectionPacket | None = None
+        self._stats_lock = threading.Lock()
+        self._published_count = 0
+        self._latest_overlay_age_ms: float | None = None
+        self._started = False
+        self._thread = threading.Thread(
+            target=self._run,
+            name="cap-line-v3-live-preview",
+            daemon=True,
+        )
+
+    def start(self) -> None:
+        if self._started:
+            return
+        self._started = True
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._started:
+            self._thread.join()
+
+    @property
+    def published_count(self) -> int:
+        with self._stats_lock:
+            return int(self._published_count)
+
+    @property
+    def latest_overlay_age_ms(self) -> float | None:
+        with self._stats_lock:
+            return self._latest_overlay_age_ms
+
+    def update_packet(self, packet: DetectionPacket) -> None:
+        with self._overlay_lock:
+            self._previous_packet = self._current_packet
+            self._current_packet = packet
+
+    def update_overlay(self, frame_pair, boxes_by_camera) -> None:
+        packet = DetectionPacket(
+            frame_pair,
+            tuple(tuple(_to_box(box) for box in camera_boxes) for camera_boxes in boxes_by_camera),
+            tuple(),
+        )
+        self.update_packet(packet)
+
+    def _should_stop(self) -> bool:
+        return self._stop_event.is_set() or (
+            self.external_stop_event is not None and self.external_stop_event.is_set()
+        )
+
+    def _run(self) -> None:
+        min_interval_s = 0.0 if self.preview_fps <= 0.0 else 1.0 / self.preview_fps
+        while not self._should_stop():
+            loop_started_at = float(self.time_fn())
+            latest_frames = tuple(reader.latest() for reader in self.camera_readers)
+            if latest_frames and all(frame is not None for frame in latest_frames):
+                live_frames = tuple(frame for frame in latest_frames if frame is not None)
+                with self._overlay_lock:
+                    previous_packet = self._previous_packet
+                    current_packet = self._current_packet
+                overlay = predict_preview_overlay(
+                    previous_packet,
+                    current_packet,
+                    live_frames,
+                    target_fps=self.overlay_target_fps,
+                )
+                annotated = []
+                for captured, boxes in zip(live_frames, overlay):
+                    frame = captured.frame.copy() if hasattr(captured.frame, "copy") else captured.frame
+                    frame = self.draw_boxes_fn(frame, boxes)
+                    frame = self.draw_anchor_line_fn(frame, self.anchor_axis, self.anchor_line_ratio)
+                    annotated.append(frame)
+                preview = self.compose_preview_fn(annotated)
+                if preview is not None:
+                    self.preview_callback(preview)
+                    overlay_age_ms = None
+                    if current_packet is not None:
+                        overlay_age_ms = (
+                            max(float(frame.timestamp) for frame in live_frames)
+                            - float(current_packet.frame_pair.pair_timestamp)
+                        ) * 1000.0
+                    with self._stats_lock:
+                        self._published_count += 1
+                        self._latest_overlay_age_ms = overlay_age_ms
+
+            if min_interval_s > 0.0 and not self._should_stop():
+                remaining_s = min_interval_s - (float(self.time_fn()) - loop_started_at)
+                if remaining_s > 0.0:
+                    self.sleep_fn(remaining_s)
+
+
 def _frame_size(frame) -> tuple[int, int]:
     shape = getattr(frame, "shape", (0, 0, 0))
     return int(shape[1]), int(shape[0])
@@ -433,6 +639,48 @@ def _write_debug_artifact(
             continue
 
 
+def _run_camera_inference(
+    *,
+    camera_index: int,
+    captured: CapturedFrame,
+    session,
+    input_name: str,
+    model_imgsz: int,
+    preprocess_fn: Callable[[object, int], tuple[object, dict]],
+    postprocess_fn: Callable[..., list[list[float]]],
+    tracking_threshold: float,
+    anchor_axis: str,
+    anchor_line_ratio: float,
+    clock: Clock,
+) -> tuple[int, tuple[Box, ...], float, list[TrackObservation]]:
+    inference_start = clock.monotonic()
+    input_tensor, meta = preprocess_fn(captured.frame, model_imgsz)
+    output = session.run(None, {input_name: input_tensor})[0]
+    boxes = tuple(_to_box(box) for box in postprocess_fn(output, meta, conf_threshold=tracking_threshold))
+    inference_ms = (clock.monotonic() - inference_start) * 1000.0
+    frame_size = _frame_size(captured.frame)
+    line_coordinate = frame_line_coordinate(
+        frame_size,
+        axis=anchor_axis,
+        ratio=anchor_line_ratio,
+    )
+    observations = [
+        TrackObservation(
+            camera_index=camera_index,
+            box=box,
+            timestamp=captured.timestamp,
+            frame_size=frame_size,
+            at_actuation_line=box_spans_line_coordinate(
+                box,
+                axis=anchor_axis,
+                line_coordinate=line_coordinate,
+            ),
+        )
+        for box in boxes
+    ]
+    return camera_index, boxes, inference_ms, observations
+
+
 def run_detection(
     config: RuntimeConfig,
     callbacks: RuntimeCallbacks | None = None,
@@ -462,18 +710,42 @@ def run_detection(
         lambda _index, source, cfg: open_cam(source, cfg.resolution[0], cfg.resolution[1], cfg.target_fps, cfg.pixel_format)
     )
     cameras = [active_camera_factory(index, source, config) for index, source in enumerate(camera_sources)]
-    readers = [DirectCameraReader(camera, index, time_fn) for index, camera in enumerate(cameras)]
+    readers = [
+        LatestFrameCameraReader(
+            camera,
+            index,
+            target_fps=config.target_fps,
+            time_fn=time_fn,
+            sleep_fn=sleep_fn,
+        )
+        for index, camera in enumerate(cameras)
+    ]
     for reader in readers:
         reader.start()
+
+    active_preprocess = preprocess_fn or preprocess
+    active_postprocess = postprocess_fn or postprocess
+    active_compose_preview = compose_preview_fn or compose_preview
+    live_preview: LivePreviewPublisher | None = None
+    if callbacks.preview_callback is not None and float(config.live_preview_fps) > 0.0:
+        live_preview = LivePreviewPublisher(
+            readers,
+            callbacks.preview_callback,
+            anchor_axis=config.anchor_axis,
+            anchor_line_ratio=config.anchor_line_ratio,
+            preview_fps=config.live_preview_fps,
+            overlay_target_fps=config.target_fps,
+            stop_event=stop_event,
+            compose_preview_fn=active_compose_preview,
+            time_fn=time_fn,
+            sleep_fn=sleep_fn,
+        )
 
     active_session_factory = session_factory or create_onnx_session
     sessions = [active_session_factory(model_path, config.onnx_intra_op_threads) for _ in camera_sources]
     input_metas = [session.get_inputs()[0] for session in sessions]
     input_names = [meta.name for meta in input_metas]
     model_imgsz = resolve_imgsz(input_metas[0], config.imgsz, preset_imgsz)
-    active_preprocess = preprocess_fn or preprocess
-    active_postprocess = postprocess_fn or postprocess
-    active_compose_preview = compose_preview_fn or compose_preview
     scheduler = RejectScheduler(
         trigger_pin=config.trigger_pin,
         trigger_duration=config.trigger_duration,
@@ -485,15 +757,23 @@ def run_detection(
     )
     start_time = clock.monotonic()
     frame_count = 0
-    preview_count = 0
     dropped_pairs = 0
     last_sequences: tuple[int, ...] | None = None
-    previous_packet: DetectionPacket | None = None
     current_packet: DetectionPacket | None = None
     tracked_cap: TrackedCap | None = None
+    inference_executor: concurrent.futures.ThreadPoolExecutor | None = None
+    if not config.serial_inference:
+        inference_executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(camera_sources))
 
     try:
+        if live_preview is not None:
+            live_preview.start()
         log_fn(f"Using V3 model: {model_path} target_fps={config.target_fps}")
+        if live_preview is not None:
+            log_fn(
+                "Live preview: "
+                f"{config.live_preview_fps:g} fps; camera display is decoupled from inference"
+            )
         while stop_event is None or not stop_event.is_set():
             latest_frames = tuple(reader.latest() for reader in readers)
             frame_pair = select_synchronized_frame_pair(
@@ -506,42 +786,46 @@ def run_detection(
                 sleep_fn(0.001)
                 if stop_event is not None and stop_event.is_set():
                     break
-                if time_fn() - start_time > 0.05 and camera_factory is not None:
+                if time_fn() - start_time > 1.0 and camera_factory is not None:
                     break
                 continue
             last_sequences = frame_pair.sequences
-            boxes_by_camera: list[tuple[Box, ...]] = []
-            inference_ms: list[float] = []
-            observations = []
-            for camera_index, captured in enumerate(frame_pair.frames):
-                inference_start = clock.monotonic()
-                input_tensor, meta = active_preprocess(captured.frame, model_imgsz)
-                output = sessions[camera_index].run(None, {input_names[camera_index]: input_tensor})[0]
-                boxes = tuple(_to_box(box) for box in active_postprocess(output, meta, conf_threshold=config.tracking_threshold))
-                boxes_by_camera.append(boxes)
-                inference_ms.append((clock.monotonic() - inference_start) * 1000.0)
-                frame_size = _frame_size(captured.frame)
-                line_coordinate = frame_line_coordinate(
-                    frame_size,
-                    axis=config.anchor_axis,
-                    ratio=config.anchor_line_ratio,
+            inference_jobs = [
+                dict(
+                    camera_index=camera_index,
+                    captured=captured,
+                    session=sessions[camera_index],
+                    input_name=input_names[camera_index],
+                    model_imgsz=model_imgsz,
+                    preprocess_fn=active_preprocess,
+                    postprocess_fn=active_postprocess,
+                    tracking_threshold=config.tracking_threshold,
+                    anchor_axis=config.anchor_axis,
+                    anchor_line_ratio=config.anchor_line_ratio,
+                    clock=clock,
                 )
-                for box in boxes:
-                    observations.append(
-                        TrackObservation(
-                            camera_index=camera_index,
-                            box=box,
-                            timestamp=captured.timestamp,
-                            frame_size=frame_size,
-                            at_actuation_line=box_spans_line_coordinate(
-                                box,
-                                axis=config.anchor_axis,
-                                line_coordinate=line_coordinate,
-                            ),
-                        )
-                    )
+                for camera_index, captured in enumerate(frame_pair.frames)
+            ]
+            if inference_executor is None:
+                inference_results = [_run_camera_inference(**job) for job in inference_jobs]
+            else:
+                futures = [inference_executor.submit(_run_camera_inference, **job) for job in inference_jobs]
+                inference_results = [future.result() for future in futures]
+
+            boxes_by_camera: list[tuple[Box, ...]] = [tuple() for _ in frame_pair.frames]
+            inference_ms: list[float] = [0.0 for _ in frame_pair.frames]
+            observations = []
+            for camera_index, boxes, camera_inference_ms, camera_observations in sorted(
+                inference_results,
+                key=lambda result: result[0],
+            ):
+                boxes_by_camera[camera_index] = boxes
+                inference_ms[camera_index] = camera_inference_ms
+                observations.extend(camera_observations)
             packet = DetectionPacket(frame_pair, tuple(boxes_by_camera), tuple(inference_ms))
-            previous_packet, current_packet = current_packet, packet
+            current_packet = packet
+            if live_preview is not None:
+                live_preview.update_packet(packet)
             if observations:
                 if tracked_cap is None:
                     tracked_cap = TrackedCap(event_id=1, created_at=frame_pair.pair_timestamp, last_seen_at=frame_pair.pair_timestamp)
@@ -565,20 +849,9 @@ def run_detection(
                     if callbacks.timing_log_callback:
                         callbacks.timing_log_callback(timing)
 
-            overlay = predict_preview_overlay(previous_packet, current_packet, frame_pair.frames, target_fps=config.target_fps)
-            annotated = []
-            for captured, boxes in zip(frame_pair.frames, overlay):
-                frame = captured.frame.copy()
-                draw_boxes(frame, boxes)
-                draw_anchor_line(frame, config.anchor_axis, config.anchor_line_ratio)
-                annotated.append(frame)
-            preview = active_compose_preview(annotated)
-            if preview is not None and callbacks.preview_callback is not None:
-                callbacks.preview_callback(preview)
-                preview_count += 1
-
             frame_count += 1
             elapsed = max(0.000001, clock.monotonic() - start_time)
+            preview_count = live_preview.published_count if live_preview is not None else 0
             snapshot = RuntimePerformanceSnapshot(
                 frame_count=frame_count,
                 target_fps=int(config.target_fps),
@@ -588,7 +861,11 @@ def run_detection(
                 preview_fps=preview_count / elapsed,
                 latest_pair_skew_ms=frame_pair.skew_ms,
                 dropped_pairs=dropped_pairs,
-                overlay_age_ms=(clock.monotonic() - current_packet.frame_pair.pair_timestamp) * 1000.0 if current_packet else None,
+                overlay_age_ms=(
+                    live_preview.latest_overlay_age_ms
+                    if live_preview is not None
+                    else ((clock.monotonic() - current_packet.frame_pair.pair_timestamp) * 1000.0 if current_packet else None)
+                ),
             )
             if callbacks.performance_callback is not None:
                 callbacks.performance_callback(snapshot)
@@ -598,6 +875,10 @@ def run_detection(
             if camera_factory is not None and frame_count >= 2:
                 break
     finally:
+        if inference_executor is not None:
+            inference_executor.shutdown(wait=True)
+        if live_preview is not None:
+            live_preview.stop()
         for reader in readers:
             reader.stop()
         for camera in cameras:

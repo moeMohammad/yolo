@@ -46,13 +46,18 @@ def predict_preview_overlay(
     if len(current_packet.boxes_by_camera) != len(live_frames):
         return tuple(() for _frame in live_frames)
 
-    timeout_s = overlay_stale_timeout_s(target_fps)
+    base_timeout_s = overlay_stale_timeout_s(target_fps)
     current_timestamps = current_packet.frame_pair.timestamps
     previous_timestamps = previous_packet.frame_pair.timestamps if previous_packet is not None else ()
     predicted_by_camera = []
     for camera_index, live_frame in enumerate(live_frames):
         current_timestamp = current_timestamps[camera_index]
         overlay_age_s = float(live_frame.timestamp) - float(current_timestamp)
+        timeout_s = base_timeout_s
+        if previous_packet is not None and camera_index < len(previous_timestamps):
+            history_s = float(current_timestamp) - float(previous_timestamps[camera_index])
+            if history_s > 0.0:
+                timeout_s = min(0.35, max(base_timeout_s, history_s * 1.25))
         if overlay_age_s > timeout_s:
             predicted_by_camera.append(())
             continue

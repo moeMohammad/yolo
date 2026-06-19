@@ -150,6 +150,154 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
 
         self.assertEqual(((),), overlay)
 
+    def test_preview_prediction_extends_timeout_for_slow_detection_cadence(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+        previous = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, "previous", 1.00, 1),),
+                pair_timestamp=1.00,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((10.0, 10.0, 20.0, 20.0, 0.9, 1),),),
+            inference_ms_by_camera=(1.0,),
+        )
+        current = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, "processed", 1.40, 2),),
+                pair_timestamp=1.40,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((30.0, 10.0, 40.0, 20.0, 0.9, 1),),),
+            inference_ms_by_camera=(1.0,),
+        )
+        live_frames = (module.CapturedFrame(0, "live", 1.70, 3),)
+
+        overlay = module.predict_preview_overlay(previous, current, live_frames, target_fps=60)
+
+        self.assertEqual(1, len(overlay[0]))
+        self.assertAlmostEqual(45.0, overlay[0][0][0])
+        self.assertAlmostEqual(55.0, overlay[0][0][2])
+
+    def test_live_preview_publisher_draws_latest_frame_with_predicted_overlay(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+
+        class FakeFrame:
+            shape = (64, 64, 3)
+
+            def __init__(self, label: str):
+                self.label = label
+
+            def copy(self):
+                return FakeFrame(self.label)
+
+        class FakeReader:
+            def latest(self):
+                return module.CapturedFrame(
+                    camera_index=0,
+                    frame=FakeFrame("live"),
+                    timestamp=1.20,
+                    sequence=3,
+                )
+
+        drawn_boxes = []
+        previews = []
+        stop_event = module.threading.Event()
+
+        def fake_draw_boxes(frame, boxes):
+            drawn_boxes.append((frame.label, [[float(value) for value in box] for box in boxes]))
+            return frame
+
+        def capture_preview(preview):
+            previews.append(preview)
+            stop_event.set()
+
+        publisher = module.LivePreviewPublisher(
+            [FakeReader()],
+            capture_preview,
+            anchor_axis="x",
+            anchor_line_ratio=0.5,
+            preview_fps=60.0,
+            overlay_target_fps=30.0,
+            stop_event=stop_event,
+            compose_preview_fn=lambda frames: frames,
+            draw_boxes_fn=fake_draw_boxes,
+            draw_anchor_line_fn=lambda frame, _axis, _ratio: frame,
+            sleep_fn=lambda _seconds: None,
+        )
+
+        publisher.update_packet(
+            module.DetectionPacket(
+                frame_pair=module.FramePair(
+                    frames=(module.CapturedFrame(0, FakeFrame("previous"), 1.00, 1),),
+                    pair_timestamp=1.00,
+                    skew_ms=0.0,
+                ),
+                boxes_by_camera=(((10.0, 10.0, 20.0, 20.0, 0.90, 1),),),
+                inference_ms_by_camera=(1.0,),
+            )
+        )
+        publisher.update_packet(
+            module.DetectionPacket(
+                frame_pair=module.FramePair(
+                    frames=(module.CapturedFrame(0, FakeFrame("processed"), 1.10, 2),),
+                    pair_timestamp=1.10,
+                    skew_ms=0.0,
+                ),
+                boxes_by_camera=(((20.0, 10.0, 30.0, 20.0, 0.90, 1),),),
+                inference_ms_by_camera=(1.0,),
+            )
+        )
+        publisher._run()
+
+        self.assertEqual(1, len(previews))
+        self.assertEqual(1, len(drawn_boxes))
+        self.assertEqual("live", drawn_boxes[0][0])
+        self.assertAlmostEqual(30.0, drawn_boxes[0][1][0][0])
+        self.assertAlmostEqual(40.0, drawn_boxes[0][1][0][2])
+
+    def test_latest_frame_reader_continues_capture_while_caller_waits(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+
+        class FakeCamera:
+            def __init__(self):
+                self.read_count = 0
+                self.released = False
+
+            def read(self):
+                self.read_count += 1
+                time.sleep(0.001)
+                return True, f"frame-{self.read_count}"
+
+            def release(self):
+                self.released = True
+
+        fake_camera = FakeCamera()
+        reader = module.LatestFrameCameraReader(
+            fake_camera,
+            camera_index=0,
+            target_fps=240,
+            time_fn=time.monotonic,
+            sleep_fn=time.sleep,
+        )
+        reader.start()
+        try:
+            first = None
+            deadline = time.monotonic() + 0.2
+            while first is None and time.monotonic() < deadline:
+                first = reader.latest()
+                time.sleep(0.005)
+
+            self.assertIsNotNone(first)
+            time.sleep(0.05)
+            latest = reader.latest()
+        finally:
+            reader.stop()
+
+        self.assertIsNotNone(latest)
+        self.assertGreater(latest.sequence, first.sequence + 1)
+        self.assertGreater(fake_camera.read_count, 2)
+        self.assertFalse(fake_camera.released)
+
     def test_synchronized_pair_requires_fresh_frames_and_respects_skew(self) -> None:
         module = load_module("cap_line_runtime_v3")
 
@@ -260,22 +408,15 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
                 return [types.SimpleNamespace(name="images", shape=[1, 3, 640, 640])]
 
             def run(self, *_args, **_kwargs):
+                time.sleep(0.05)
                 return [None]
 
         previews = []
         performances = []
-        ticks = iter([0.00, 0.00, 0.01, 0.01, 0.02, 0.02, 0.03, 0.03, 0.04, 0.04, 0.05, 0.05])
         stop_event = module.threading.Event()
 
-        def fake_time():
-            try:
-                return next(ticks)
-            except StopIteration:
-                stop_event.set()
-                return 0.06
-
         config = module.RuntimeConfig.defaults()
-        config = module.replace(config, target_fps=120, simulate_gpio=True, no_display=True)
+        config = module.replace(config, target_fps=120, live_preview_fps=120.0, simulate_gpio=True, no_display=True)
         callbacks = module.RuntimeCallbacks(
             preview_callback=previews.append,
             performance_callback=performances.append,
@@ -291,12 +432,13 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
             preprocess_fn=lambda frame, _imgsz: (frame, {"frame_shape": frame.shape}),
             postprocess_fn=lambda *_args, **_kwargs: [],
             compose_preview_fn=lambda _frames: "preview",
-            time_fn=fake_time,
-            sleep_fn=lambda _seconds: None,
+            time_fn=time.monotonic,
+            sleep_fn=time.sleep,
         )
 
         self.assertGreaterEqual(len(previews), 1)
         self.assertTrue(any(snapshot.target_fps == 120 for snapshot in performances))
+        self.assertTrue(any(snapshot.preview_fps > snapshot.processed_fps for snapshot in performances))
 
     def test_trigger_runtime_writes_v3_debug_artifact(self) -> None:
         module = load_module("cap_line_runtime_v3")
@@ -333,14 +475,6 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
             )
             callbacks = module.RuntimeCallbacks(log_fn=lambda *_args, **_kwargs: None)
             stop_event = module.threading.Event()
-            ticks = iter([0.00, 0.00, 0.01, 0.01, 0.02, 0.02, 0.03, 0.03, 0.04, 0.04])
-
-            def fake_time():
-                try:
-                    return next(ticks)
-                except StopIteration:
-                    stop_event.set()
-                    return 0.05
 
             module.run_detection(
                 config,
@@ -351,8 +485,8 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
                 preprocess_fn=lambda frame, _imgsz: (frame, {"frame_shape": frame.shape}),
                 postprocess_fn=lambda *_args, **_kwargs: [[12.0, 0.0, 20.0, 31.0, 0.9, 1.0]],
                 compose_preview_fn=lambda _frames: "preview",
-                time_fn=fake_time,
-                sleep_fn=lambda _seconds: None,
+                time_fn=time.monotonic,
+                sleep_fn=time.sleep,
             )
 
             debug_json = list((Path(tmpdir) / "debugging_v3").glob("event_*.json"))

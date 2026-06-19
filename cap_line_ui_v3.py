@@ -22,6 +22,7 @@ DEFAULT_DB_PATH = str(SCRIPT_DIR / "data" / "cap_line_history_v3.sqlite3")
 DEFAULT_SETTINGS_PATH = str(SCRIPT_DIR / "data" / "cap_line_ui_v3_settings.json")
 EVENT_LIMIT = 100
 TIMING_LOG_LIMIT = 100
+LIVE_POLL_INTERVAL_MS = 16
 TRIGGER_PIN_LABEL = "Trigger GPIO09 (BOARD pin 7)"
 CONFIG_FIELD_LABELS = (
     "Model",
@@ -336,7 +337,7 @@ if PYQT_AVAILABLE:
             self._load_history_table()
             self._sync_controls()
             self.poll_timer = QTimer(self)
-            self.poll_timer.setInterval(150)
+            self.poll_timer.setInterval(LIVE_POLL_INTERVAL_MS)
             self.poll_timer.timeout.connect(self._poll_controller)
             self.poll_timer.start()
 
@@ -571,7 +572,13 @@ if PYQT_AVAILABLE:
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             height, width, channels = rgb.shape
             image = QImage(rgb.data, width, height, channels * width, QImage.Format.Format_RGB888)
-            self.preview_label.setPixmap(QPixmap.fromImage(image).scaled(self.preview_label.size(), Qt.AspectRatioMode.KeepAspectRatio))
+            self.preview_label.setPixmap(
+                QPixmap.fromImage(image).scaled(
+                    self.preview_label.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.FastTransformation,
+                )
+            )
 
         def _update_performance(self, snapshot) -> None:
             self.metric_labels["target_fps"].setText(str(snapshot.target_fps))
