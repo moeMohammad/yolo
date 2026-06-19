@@ -9,6 +9,12 @@ def overlay_stale_timeout_s(target_fps: int | float) -> float:
     return min(0.35, max(0.10, 3.0 / fps))
 
 
+def _camera_inference_s(packet: DetectionPacket, camera_index: int) -> float:
+    if camera_index >= len(packet.inference_ms_by_camera):
+        return 0.0
+    return max(0.0, float(packet.inference_ms_by_camera[camera_index]) / 1000.0)
+
+
 def _shift_box(box: Box, shift_x: float, shift_y: float) -> Box:
     return (
         box[0] + shift_x,
@@ -53,11 +59,12 @@ def predict_preview_overlay(
     for camera_index, live_frame in enumerate(live_frames):
         current_timestamp = current_timestamps[camera_index]
         overlay_age_s = float(live_frame.timestamp) - float(current_timestamp)
-        timeout_s = base_timeout_s
+        timeout_s = max(base_timeout_s, _camera_inference_s(current_packet, camera_index) + base_timeout_s)
         if previous_packet is not None and camera_index < len(previous_timestamps):
             history_s = float(current_timestamp) - float(previous_timestamps[camera_index])
             if history_s > 0.0:
-                timeout_s = min(0.35, max(base_timeout_s, history_s * 1.25))
+                timeout_s = max(timeout_s, history_s * 1.5)
+        timeout_s = min(1.25, timeout_s)
         if overlay_age_s > timeout_s:
             predicted_by_camera.append(())
             continue

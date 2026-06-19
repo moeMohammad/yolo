@@ -150,6 +150,23 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
 
         self.assertEqual(((),), overlay)
 
+    def test_preview_prediction_keeps_high_latency_detection_visible(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+        packet = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, "processed", 1.00, 1),),
+                pair_timestamp=1.00,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((10.0, 10.0, 20.0, 20.0, 0.9, 1),),),
+            inference_ms_by_camera=(450.0,),
+        )
+        live_frames = (module.CapturedFrame(0, "live", 1.42, 2),)
+
+        overlay = module.predict_preview_overlay(None, packet, live_frames, target_fps=60)
+
+        self.assertEqual(packet.boxes_by_camera, overlay)
+
     def test_preview_prediction_extends_timeout_for_slow_detection_cadence(self) -> None:
         module = load_module("cap_line_runtime_v3")
         previous = module.DetectionPacket(
@@ -416,7 +433,14 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
         stop_event = module.threading.Event()
 
         config = module.RuntimeConfig.defaults()
-        config = module.replace(config, target_fps=120, live_preview_fps=120.0, simulate_gpio=True, no_display=True)
+        config = module.replace(
+            config,
+            target_fps=120,
+            live_preview_fps=120.0,
+            serial_inference=True,
+            simulate_gpio=True,
+            no_display=True,
+        )
         callbacks = module.RuntimeCallbacks(
             preview_callback=previews.append,
             performance_callback=performances.append,
