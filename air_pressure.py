@@ -1,20 +1,17 @@
-import Jetson.GPIO as GPIO
 import time
 
-from gpio_output import GPIO09
+from gpio_output import GPIO09, GPIOOutputPin
 
-GPIO.setmode(GPIO.BOARD)
 
-GPIO.setup(GPIO09, GPIO.OUT, initial=GPIO.LOW)
-
-try:
-    test_detection = True
-
-    if test_detection:
-        GPIO.output(GPIO09, GPIO.HIGH)
+def main() -> None:
+    pin = GPIOOutputPin(GPIO09)
+    try:
+        pin.on()
         time.sleep(1)
-        GPIO.output(GPIO09, GPIO.LOW)
+        pin.off()
+    finally:
+        pin.close()
 
-finally:
-    GPIO.output(GPIO09, GPIO.LOW)
-    GPIO.cleanup()
+
+if __name__ == "__main__":
+    main()

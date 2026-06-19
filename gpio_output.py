@@ -4,6 +4,18 @@ from __future__ import annotations
 GPIO09 = 7  # physical pin 7 on 40-pin header (BOARD numbering)
 DEFAULT_TRIGGER_PIN = GPIO09
 
+_GPIO_PERMISSIONS_HINT = (
+    "Configure Jetson GPIO access once, then log out and back in:\n"
+    "  sudo groupadd -f -r gpio\n"
+    "  sudo usermod -aG gpio $USER\n"
+    "  sudo cp $(python3 -c \"import Jetson.GPIO as m, os; "
+    "print(os.path.join(os.path.dirname(m.__file__), '99-gpio.rules'))\") "
+    "/etc/udev/rules.d/\n"
+    "  sudo udevadm control --reload-rules && sudo udevadm trigger\n"
+    "If it still fails immediately, also run:\n"
+    "  for c in /dev/gpiochip*; do sudo chown root:gpio $c; sudo chmod 660 $c; done"
+)
+
 
 def _is_gpio09_alias(pin_text: str) -> bool:
     compact_name = pin_text.strip().upper().replace("_", "-")
@@ -43,7 +55,8 @@ class GPIOOutputPin:
             raise RuntimeError(
                 f"Could not initialize Jetson.GPIO {mode_name} pin {channel}. "
                 "Check that the selected Jetson header pin is configured for GPIO "
-                "output and that pinmux/permissions are set correctly."
+                "output and that pinmux/permissions are set correctly.\n\n"
+                f"{_GPIO_PERMISSIONS_HINT}"
             ) from exc
 
         self.pin = channel
