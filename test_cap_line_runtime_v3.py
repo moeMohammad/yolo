@@ -133,6 +133,24 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
         self.assertAlmostEqual(30.0, overlay[0][0][0])
         self.assertAlmostEqual(40.0, overlay[0][0][2])
 
+    def test_preview_prediction_uses_detection_frame_when_sequences_match(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+        packet = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, "processed", 1.00, 5),),
+                pair_timestamp=1.00,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((10.0, 10.0, 20.0, 20.0, 0.9, 1),),),
+            inference_ms_by_camera=(1.0,),
+        )
+        live_frames = (module.CapturedFrame(0, "live", 1.01, 5),)
+
+        views = module.resolve_preview_views(None, packet, live_frames, target_fps=60)
+
+        self.assertEqual("processed", views[0].captured.frame)
+        self.assertEqual(packet.boxes_by_camera[0], views[0].boxes)
+
     def test_preview_prediction_hides_stale_overlay(self) -> None:
         module = load_module("cap_line_runtime_v3")
         packet = module.DetectionPacket(
@@ -164,8 +182,11 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
         live_frames = (module.CapturedFrame(0, "live", 1.42, 2),)
 
         overlay = module.predict_preview_overlay(None, packet, live_frames, target_fps=60)
+        views = module.resolve_preview_views(None, packet, live_frames, target_fps=60)
 
         self.assertEqual(packet.boxes_by_camera, overlay)
+        self.assertEqual("processed", views[0].captured.frame)
+        self.assertEqual(packet.boxes_by_camera[0], views[0].boxes)
 
     def test_preview_prediction_extends_timeout_for_slow_detection_cadence(self) -> None:
         module = load_module("cap_line_runtime_v3")

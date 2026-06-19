@@ -18,7 +18,7 @@ from .config import DEFAULT_MODEL, RuntimeConfig, validate_config
 from .decision import TrackedCap, decide_decision_ready
 from .geometry import box_spans_line_coordinate, frame_line_coordinate
 from .pairing import select_synchronized_frame_pair
-from .preview import predict_preview_overlay
+from .preview import resolve_preview_views
 from .types import (
     Box,
     CapturedFrame,
@@ -516,7 +516,7 @@ class LivePreviewPublisher:
                 with self._overlay_lock:
                     previous_packet = self._previous_packet
                     current_packet = self._current_packet
-                overlay = predict_preview_overlay(
+                preview_views = resolve_preview_views(
                     previous_packet,
                     current_packet,
                     live_frames,
@@ -524,9 +524,10 @@ class LivePreviewPublisher:
                     preview_latency_compensation_ms=self.preview_latency_compensation_ms,
                 )
                 annotated = []
-                for captured, boxes in zip(live_frames, overlay):
+                for view in preview_views:
+                    captured = view.captured
                     frame = captured.frame.copy() if hasattr(captured.frame, "copy") else captured.frame
-                    frame = self.draw_boxes_fn(frame, boxes)
+                    frame = self.draw_boxes_fn(frame, view.boxes)
                     frame = self.draw_anchor_line_fn(frame, self.anchor_axis, self.anchor_line_ratio)
                     annotated.append(frame)
                 preview = self.compose_preview_fn(annotated)

@@ -3,7 +3,7 @@
 from .config import RuntimeConfig, build_arg_parser, config_from_args, parse_args, replace
 from .decision import TrackedCap, decide_decision_ready, decide_tracked_cap
 from .pairing import select_synchronized_frame_pair
-from .preview import overlay_stale_timeout_s, predict_preview_overlay
+from .preview import overlay_stale_timeout_s, predict_preview_overlay, resolve_preview_views
 from .runtime import LatestFrameCameraReader, LivePreviewPublisher, postprocess, preprocess, run_detection
 from .types import (
     CapturedFrame,
@@ -38,6 +38,7 @@ __all__ = [
     "overlay_stale_timeout_s",
     "parse_args",
     "predict_preview_overlay",
+    "resolve_preview_views",
     "postprocess",
     "preprocess",
     "replace",

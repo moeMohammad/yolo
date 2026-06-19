@@ -28,6 +28,7 @@ DEFAULT_BELT_SPEED_MM_PER_S = 275.0
 DEFAULT_TRIGGER_OFFSET_S = -0.23
 DEFAULT_FINALIZE_QUIET_MS = 30.0
 DEFAULT_LATENCY_COMPENSATION_MS = 50.0
+DEFAULT_PREVIEW_LATENCY_COMPENSATION_MS = 0.0
 DEFAULT_LIVE_PREVIEW_FPS = 30.0
 DEFAULT_SAVE_QUEUE_WARNING_THRESHOLD = 25
 
@@ -58,7 +59,7 @@ class RuntimeConfig:
     belt_speed_mm_per_s: float = DEFAULT_BELT_SPEED_MM_PER_S
     trigger_offset_s: float = DEFAULT_TRIGGER_OFFSET_S
     latency_compensation_ms: float = DEFAULT_LATENCY_COMPENSATION_MS
-    preview_latency_compensation_ms: float = DEFAULT_LATENCY_COMPENSATION_MS
+    preview_latency_compensation_ms: float = DEFAULT_PREVIEW_LATENCY_COMPENSATION_MS
     serial_inference: bool = False
     onnx_intra_op_threads: int = DEFAULT_ONNX_INTRA_OP_THREADS
     perf_log_interval_s: float = DEFAULT_PERF_LOG_INTERVAL_S
