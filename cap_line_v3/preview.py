@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .geometry import box_center, boxes_look_like_same_cap
+from .geometry import box_center, box_size_ratio, boxes_look_like_same_cap, normalized_center_distance
 from .types import Box, CapturedFrame, DetectionPacket
 
 
@@ -30,6 +30,15 @@ def _match_previous_box(box: Box, previous_boxes: tuple[Box, ...]) -> Box | None
     same_class = tuple(candidate for candidate in previous_boxes if int(candidate[5]) == int(box[5]))
     candidates = same_class or previous_boxes
     plausible = tuple(candidate for candidate in candidates if boxes_look_like_same_cap(box, candidate))
+    if not plausible and len(candidates) == 1 and box_size_ratio(box, candidates[0]) >= 0.25:
+        return candidates[0]
+    if not plausible:
+        plausible = tuple(
+            candidate
+            for candidate in candidates
+            if box_size_ratio(box, candidate) >= 0.35
+            and normalized_center_distance(box, candidate) <= 12.0
+        )
     if not plausible:
         return None
     current_x, current_y = box_center(box)
@@ -46,6 +55,7 @@ def predict_preview_overlay(
     live_frames: tuple[CapturedFrame, ...],
     *,
     target_fps: int | float,
+    preview_latency_compensation_ms: int | float = 0.0,
 ) -> tuple[tuple[Box, ...], ...]:
     if current_packet is None:
         return tuple(() for _frame in live_frames)
@@ -58,7 +68,11 @@ def predict_preview_overlay(
     predicted_by_camera = []
     for camera_index, live_frame in enumerate(live_frames):
         current_timestamp = current_timestamps[camera_index]
-        overlay_age_s = float(live_frame.timestamp) - float(current_timestamp)
+        overlay_age_s = (
+            float(live_frame.timestamp)
+            - float(current_timestamp)
+            + (max(0.0, float(preview_latency_compensation_ms)) / 1000.0)
+        )
         timeout_s = max(base_timeout_s, _camera_inference_s(current_packet, camera_index) + base_timeout_s)
         if previous_packet is not None and camera_index < len(previous_timestamps):
             history_s = float(current_timestamp) - float(previous_timestamps[camera_index])

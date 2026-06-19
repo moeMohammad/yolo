@@ -195,6 +195,67 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
         self.assertAlmostEqual(45.0, overlay[0][0][0])
         self.assertAlmostEqual(55.0, overlay[0][0][2])
 
+    def test_preview_prediction_tracks_large_jump_between_slow_detections(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+        previous = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, "previous", 1.00, 1),),
+                pair_timestamp=1.00,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((10.0, 10.0, 30.0, 30.0, 0.9, 1),),),
+            inference_ms_by_camera=(1.0,),
+        )
+        current = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, "processed", 1.40, 2),),
+                pair_timestamp=1.40,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((170.0, 10.0, 190.0, 30.0, 0.9, 1),),),
+            inference_ms_by_camera=(1.0,),
+        )
+        live_frames = (module.CapturedFrame(0, "live", 1.55, 3),)
+
+        overlay = module.predict_preview_overlay(previous, current, live_frames, target_fps=60)
+
+        self.assertEqual(1, len(overlay[0]))
+        self.assertAlmostEqual(230.0, overlay[0][0][0])
+        self.assertAlmostEqual(250.0, overlay[0][0][2])
+
+    def test_preview_prediction_applies_latency_compensation_as_forward_lead(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+        previous = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, "previous", 1.00, 1),),
+                pair_timestamp=1.00,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((10.0, 10.0, 20.0, 20.0, 0.9, 1),),),
+            inference_ms_by_camera=(1.0,),
+        )
+        current = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, "processed", 1.10, 2),),
+                pair_timestamp=1.10,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((20.0, 10.0, 30.0, 20.0, 0.9, 1),),),
+            inference_ms_by_camera=(1.0,),
+        )
+        live_frames = (module.CapturedFrame(0, "live", 1.20, 3),)
+
+        overlay = module.predict_preview_overlay(
+            previous,
+            current,
+            live_frames,
+            target_fps=60,
+            preview_latency_compensation_ms=50.0,
+        )
+
+        self.assertAlmostEqual(35.0, overlay[0][0][0])
+        self.assertAlmostEqual(45.0, overlay[0][0][2])
+
     def test_live_preview_publisher_draws_latest_frame_with_predicted_overlay(self) -> None:
         module = load_module("cap_line_runtime_v3")
 

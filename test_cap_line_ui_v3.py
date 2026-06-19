@@ -85,6 +85,7 @@ class CapLineUiV3Tests(unittest.TestCase):
             "Belt Speed mm/s",
             "Trigger Offset s",
             "Latency Compensation ms",
+            "Preview Lead ms",
             "Timing Log Dir",
             "Debug Dir",
             "Pictures Dir",
@@ -105,6 +106,7 @@ class CapLineUiV3Tests(unittest.TestCase):
                 target_fps=120,
                 exposure=12,
                 tracking_threshold=0.51,
+                preview_latency_compensation_ms=85.0,
             )
 
             store.save(config)
@@ -114,6 +116,7 @@ class CapLineUiV3Tests(unittest.TestCase):
         self.assertEqual(120, loaded.target_fps)
         self.assertEqual(12, loaded.exposure)
         self.assertAlmostEqual(0.51, loaded.tracking_threshold)
+        self.assertAlmostEqual(85.0, loaded.preview_latency_compensation_ms)
 
     def test_controller_passes_latest_config_to_runner(self) -> None:
         runtime_module = load_module("cap_line_runtime_v3")

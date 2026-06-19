@@ -436,6 +436,7 @@ class LivePreviewPublisher:
         compose_preview_fn: Callable[[list[object]], object] | None = None,
         draw_boxes_fn: Callable[[object, tuple[Box, ...]], object] | None = None,
         draw_anchor_line_fn: Callable[[object, str, float], object] | None = None,
+        preview_latency_compensation_ms: int | float = 0.0,
         time_fn: Callable[[], float] = time.monotonic,
         sleep_fn: Callable[[float], None] = time.sleep,
     ):
@@ -449,6 +450,7 @@ class LivePreviewPublisher:
         self.compose_preview_fn = compose_preview_fn or compose_preview
         self.draw_boxes_fn = draw_boxes_fn or draw_boxes
         self.draw_anchor_line_fn = draw_anchor_line_fn or draw_anchor_line
+        self.preview_latency_compensation_ms = float(preview_latency_compensation_ms)
         self.time_fn = time_fn
         self.sleep_fn = sleep_fn
         self._stop_event = threading.Event()
@@ -519,6 +521,7 @@ class LivePreviewPublisher:
                     current_packet,
                     live_frames,
                     target_fps=self.overlay_target_fps,
+                    preview_latency_compensation_ms=self.preview_latency_compensation_ms,
                 )
                 annotated = []
                 for captured, boxes in zip(live_frames, overlay):
@@ -737,6 +740,7 @@ def run_detection(
             overlay_target_fps=config.target_fps,
             stop_event=stop_event,
             compose_preview_fn=active_compose_preview,
+            preview_latency_compensation_ms=config.preview_latency_compensation_ms,
             time_fn=time_fn,
             sleep_fn=sleep_fn,
         )

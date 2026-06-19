@@ -46,6 +46,7 @@ CONFIG_FIELD_LABELS = (
     "Belt Speed mm/s",
     "Trigger Offset s",
     "Latency Compensation ms",
+    "Preview Lead ms",
     "Timing Log Dir",
     "Debug Dir",
     "Pictures Dir",
@@ -426,6 +427,7 @@ if PYQT_AVAILABLE:
             self.belt_speed_spin = QDoubleSpinBox(); self.belt_speed_spin.setRange(0.001, 5000); self.belt_speed_spin.setDecimals(3)
             self.trigger_offset_spin = QDoubleSpinBox(); self.trigger_offset_spin.setRange(-5, 5); self.trigger_offset_spin.setDecimals(3)
             self.latency_compensation_spin = QDoubleSpinBox(); self.latency_compensation_spin.setRange(0, 5000); self.latency_compensation_spin.setDecimals(1)
+            self.preview_latency_compensation_spin = QDoubleSpinBox(); self.preview_latency_compensation_spin.setRange(0, 5000); self.preview_latency_compensation_spin.setDecimals(1)
             self.timing_log_dir_input = QLineEdit()
             self.debug_dir_input = QLineEdit()
             self.pictures_dir_input = QLineEdit()
@@ -452,6 +454,7 @@ if PYQT_AVAILABLE:
                 ("Belt Speed mm/s", self.belt_speed_spin),
                 ("Trigger Offset s", self.trigger_offset_spin),
                 ("Latency Compensation ms", self.latency_compensation_spin),
+                ("Preview Lead ms", self.preview_latency_compensation_spin),
                 ("Timing Log Dir", self.timing_log_dir_input),
                 ("Debug Dir", self.debug_dir_input),
                 ("Pictures Dir", self.pictures_dir_input),
@@ -495,6 +498,7 @@ if PYQT_AVAILABLE:
             self.belt_speed_spin.setValue(config.belt_speed_mm_per_s)
             self.trigger_offset_spin.setValue(config.trigger_offset_s)
             self.latency_compensation_spin.setValue(config.latency_compensation_ms)
+            self.preview_latency_compensation_spin.setValue(config.preview_latency_compensation_ms)
             self.timing_log_dir_input.setText(config.timing_log_dir)
             self.debug_dir_input.setText(config.debug_dir)
             self.pictures_dir_input.setText(config.pictures_dir)
@@ -521,6 +525,7 @@ if PYQT_AVAILABLE:
                 belt_speed_mm_per_s=self.belt_speed_spin.value(),
                 trigger_offset_s=self.trigger_offset_spin.value(),
                 latency_compensation_ms=self.latency_compensation_spin.value(),
+                preview_latency_compensation_ms=self.preview_latency_compensation_spin.value(),
                 timing_log_dir=self.timing_log_dir_input.text().strip() or RuntimeConfig.defaults().timing_log_dir,
                 debug_dir=self.debug_dir_input.text().strip() or RuntimeConfig.defaults().debug_dir,
                 pictures_dir=self.pictures_dir_input.text().strip() or RuntimeConfig.defaults().pictures_dir,
