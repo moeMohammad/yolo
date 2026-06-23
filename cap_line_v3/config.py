@@ -30,7 +30,7 @@ DEFAULT_FINALIZE_QUIET_MS = 30.0
 DEFAULT_LATENCY_COMPENSATION_MS = 50.0
 DEFAULT_PREVIEW_LATENCY_COMPENSATION_MS = 0.0
 DEFAULT_LIVE_PREVIEW_FPS = 30.0
-DEFAULT_ANCHOR_LINE_RATIO = 0.60
+DEFAULT_ANCHOR_LINE_RATIO = 0.75
 DEFAULT_ACTUATION_SNAPSHOT_HOLD_MS = 450.0
 DEFAULT_SAVE_QUEUE_WARNING_THRESHOLD = 25
 
@@ -92,6 +92,8 @@ class RuntimeConfig:
         defaults = cls.defaults()
         allowed = defaults.to_json_dict()
         merged = {**allowed, **{key: value for key, value in data.items() if key in allowed}}
+        if float(merged.get("anchor_line_ratio", defaults.anchor_line_ratio)) <= 0.60:
+            merged["anchor_line_ratio"] = defaults.anchor_line_ratio
         merged["cameras"] = tuple(str(value) for value in merged["cameras"])  # type: ignore[assignment]
         merged["resolution"] = tuple(int(value) for value in merged["resolution"])  # type: ignore[assignment]
         return cls(**merged)

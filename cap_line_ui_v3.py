@@ -65,7 +65,9 @@ class ConfigSettingsStore:
         if not self.path.exists():
             return create_gui_config()
         try:
-            return RuntimeConfig.from_json_dict(json.loads(self.path.read_text(encoding="utf-8")))
+            config = RuntimeConfig.from_json_dict(json.loads(self.path.read_text(encoding="utf-8")))
+            self.save(config)
+            return config
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             return create_gui_config()
 
