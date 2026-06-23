@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Manual Jetson.GPIO controller for the cap-line trigger pin.
+Manual GPIO controller for the cap-line trigger pin.
 
 Examples:
   python3 manual_gpio.py
@@ -23,15 +23,20 @@ DEFAULT_PULSE_DURATION = 1.0
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Manually control the Jetson.GPIO output pin used by the cap-line runtime."
+        description="Manually control the GPIO output pin used by the cap-line runtime."
     )
     parser.add_argument(
         "--pin",
         default=DEFAULT_TRIGGER_PIN,
         help=(
-            f"Jetson.GPIO BOARD pin to control "
+            "Jetson Nano BOARD pin to control "
             f"(default: {DEFAULT_TRIGGER_PIN}, GPIO09)"
         ),
+    )
+    parser.add_argument(
+        "--active-low",
+        action="store_true",
+        help="drive LOW for ON and HIGH for OFF; use this for active-low relay modules",
     )
 
     subparsers = parser.add_subparsers(dest="command")
@@ -56,22 +61,29 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def state_suffix(pin: GPIOOutputPin) -> str:
+    try:
+        return f" (readback {pin.read_label()})"
+    except Exception:
+        return ""
+
+
 def pulse(pin: GPIOOutputPin, duration: float) -> None:
     if duration <= 0:
         raise ValueError("pulse duration must be greater than 0")
 
     pin.on()
-    print(f"Pin ON for {duration:.3f}s")
+    print(f"Pin ON for {duration:.3f}s{state_suffix(pin)}")
     try:
         time.sleep(duration)
     finally:
         pin.off()
-        print("Pin OFF")
+        print(f"Pin OFF{state_suffix(pin)}")
 
 
 def hold_on(pin: GPIOOutputPin) -> None:
     pin.on()
-    print("Pin ON")
+    print(f"Pin ON{state_suffix(pin)}")
     print("Press Ctrl+C to turn it off and exit.")
     try:
         while True:
@@ -80,9 +92,9 @@ def hold_on(pin: GPIOOutputPin) -> None:
         print("\nStopping manual hold.")
 
 
-def run_interactive(pin: GPIOOutputPin, pin_number: int) -> None:
+def run_interactive(pin: GPIOOutputPin, pin_number) -> None:
     state = "OFF"
-    print(f"Interactive Jetson.GPIO control for pin {pin_number}")
+    print(f"Interactive Jetson Nano GPIO control for pin {pin_number}")
     print("Commands: on, off, pulse [seconds], status, quit")
 
     while True:
@@ -104,17 +116,17 @@ def run_interactive(pin: GPIOOutputPin, pin_number: int) -> None:
         if command in {"quit", "exit"}:
             break
         if command == "status":
-            print(f"Pin state: {state}")
+            print(f"Pin state: {state}{state_suffix(pin)}")
             continue
         if command == "on":
             pin.on()
             state = "ON"
-            print("Pin ON")
+            print(f"Pin ON{state_suffix(pin)}")
             continue
         if command == "off":
             pin.off()
             state = "OFF"
-            print("Pin OFF")
+            print(f"Pin OFF{state_suffix(pin)}")
             continue
         if command == "pulse":
             duration = DEFAULT_PULSE_DURATION
@@ -143,8 +155,8 @@ def main() -> None:
     args = parser.parse_args()
     command = args.command or "interactive"
 
-    pin = GPIOOutputPin(args.pin)
-    print(f"Using Jetson.GPIO pin {args.pin} via {pin.backend_name}")
+    pin = GPIOOutputPin(args.pin, active_low=args.active_low)
+    print(f"Using Jetson Nano GPIO pin {args.pin} via {pin.backend_name}")
     print("Do not run this while the cap-line runtime controls the same pin.")
 
     try:

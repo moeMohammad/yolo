@@ -2645,7 +2645,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=DEFAULT_TRIGGER_PIN,
         help=(
             "Jetson.GPIO output pin to pulse for reject actuation "
-            f"(default: {DEFAULT_TRIGGER_PIN}; GPIO09 is BOARD physical pin 7)"
+            f"(default: {DEFAULT_TRIGGER_PIN}; GPIO09 is Jetson Nano BOARD pin 7)"
         ),
     )
     parser.add_argument("--trigger-duration", type=float, default=0.3)

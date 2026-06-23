@@ -23,7 +23,7 @@ DEFAULT_SETTINGS_PATH = str(SCRIPT_DIR / "data" / "cap_line_ui_v3_settings.json"
 EVENT_LIMIT = 100
 TIMING_LOG_LIMIT = 100
 LIVE_POLL_INTERVAL_MS = 16
-TRIGGER_PIN_LABEL = "Trigger GPIO09 (BOARD pin 7)"
+TRIGGER_PIN_LABEL = "Trigger GPIO09 (Jetson BOARD pin 7)"
 CONFIG_FIELD_LABELS = (
     "Model",
     "Camera 0",

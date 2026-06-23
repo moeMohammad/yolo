@@ -24,6 +24,7 @@ def load_module(module_name: str):
 
 class FakeJetsonGPIO(types.ModuleType):
     BOARD = "BOARD"
+    BCM = "BCM"
     OUT = "OUT"
     LOW = 0
     HIGH = 1
@@ -43,6 +44,11 @@ class FakeJetsonGPIO(types.ModuleType):
 
     def output(self, pin, state):
         self.calls.append(("output", pin, state))
+        self.last_output = state
+
+    def input(self, pin):
+        self.calls.append(("input", pin))
+        return self.last_output
 
     def cleanup(self, pin):
         self.calls.append(("cleanup", pin))
@@ -66,18 +72,20 @@ class GPIOOutputPinTests(unittest.TestCase):
         with patch.dict(sys.modules, build_fake_jetson_modules(fake_gpio)):
             pin = module.GPIOOutputPin("GPIO09")
             pin.on()
+            self.assertEqual("HIGH", pin.read_label())
             pin.off()
             pin.close()
 
         self.assertEqual(7, pin.pin)
-        self.assertEqual("Jetson.GPIO BOARD", pin.backend_name)
+        self.assertEqual("Jetson.GPIO BOARD active-high", pin.backend_name)
         self.assertEqual(
             [
-                ("setwarnings", False),
+                ("setwarnings", True),
                 ("setmode", "BOARD"),
                 ("setup", 7, "OUT", 0),
                 ("output", 7, 0),
                 ("output", 7, 1),
+                ("input", 7),
                 ("output", 7, 0),
                 ("output", 7, 0),
                 ("cleanup", 7),
@@ -85,10 +93,55 @@ class GPIOOutputPinTests(unittest.TestCase):
             fake_gpio.calls,
         )
 
-    def test_missing_jetson_gpio_reports_install_hint(self) -> None:
+    def test_output_pin_supports_active_low_relay_modules(self) -> None:
+        module = load_module("gpio_output")
+        fake_gpio = FakeJetsonGPIO()
+
+        with patch.dict(sys.modules, build_fake_jetson_modules(fake_gpio)):
+            pin = module.GPIOOutputPin("BOARD7", active_low=True)
+            pin.on()
+            pin.off()
+            pin.close()
+
+        self.assertEqual(7, pin.pin)
+        self.assertEqual("Jetson.GPIO BOARD active-low", pin.backend_name)
+        self.assertEqual(
+            [
+                ("setwarnings", True),
+                ("setmode", "BOARD"),
+                ("setup", 7, "OUT", 1),
+                ("output", 7, 1),
+                ("output", 7, 0),
+                ("output", 7, 1),
+                ("output", 7, 1),
+                ("cleanup", 7),
+            ],
+            fake_gpio.calls,
+        )
+
+    def test_output_pin_supports_jetson_bcm_numbering_when_explicit(self) -> None:
+        module = load_module("gpio_output")
+        fake_gpio = FakeJetsonGPIO()
+
+        with patch.dict(sys.modules, build_fake_jetson_modules(fake_gpio)):
+            pin = module.GPIOOutputPin("BCM4")
+            pin.on()
+            pin.close()
+
+        self.assertEqual(4, pin.pin)
+        self.assertEqual("Jetson.GPIO BCM active-high", pin.backend_name)
+        self.assertEqual(("setmode", "BCM"), fake_gpio.calls[1])
+
+    def test_missing_jetson_gpio_reports_setup_hint(self) -> None:
         module = load_module("gpio_output")
 
-        with patch.dict(sys.modules, {"Jetson": None, "Jetson.GPIO": None}):
+        with patch.dict(
+            sys.modules,
+            {
+                "Jetson": None,
+                "Jetson.GPIO": None,
+            },
+        ):
             with self.assertRaisesRegex(RuntimeError, "Jetson.GPIO"):
                 module.GPIOOutputPin("GPIO09")
 

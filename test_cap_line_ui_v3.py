@@ -80,7 +80,7 @@ class CapLineUiV3Tests(unittest.TestCase):
             "Tracking Threshold",
             "Reject Threshold",
             "Pair Max Skew ms",
-            "Trigger GPIO09 (BOARD pin 7)",
+            "Trigger GPIO09 (Jetson BOARD pin 7)",
             "Nozzle Distance mm",
             "Belt Speed mm/s",
             "Trigger Offset s",

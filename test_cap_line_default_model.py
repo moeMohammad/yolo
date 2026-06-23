@@ -57,7 +57,10 @@ class CapLineDefaultModelTests(unittest.TestCase):
     def test_ui_trigger_pin_label_mentions_board_pin(self) -> None:
         ui_module = load_module("cap_line_ui")
 
-        self.assertEqual("Trigger GPIO09 (BOARD pin 7)", ui_module.TRIGGER_PIN_LABEL)
+        self.assertEqual(
+            "Trigger GPIO09 (Jetson BOARD pin 7)",
+            ui_module.TRIGGER_PIN_LABEL,
+        )
 
 
 if __name__ == "__main__":

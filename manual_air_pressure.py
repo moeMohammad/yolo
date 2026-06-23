@@ -25,7 +25,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pin",
         default=GPIO09,
-        help=f"Jetson.GPIO BOARD pin to control (default: {GPIO09}, GPIO09)",
+        help=f"Jetson Nano BOARD pin to control (default: {GPIO09}, GPIO09)",
+    )
+    parser.add_argument(
+        "--active-low",
+        action="store_true",
+        help="drive LOW for ON and HIGH for OFF; use this for active-low relay modules",
     )
     return parser
 
@@ -49,12 +54,19 @@ def read_key() -> str:
     return sys.stdin.read(1)
 
 
+def state_suffix(pin: GPIOOutputPin) -> str:
+    try:
+        return f" (readback {pin.read_label()})"
+    except Exception:
+        return ""
+
+
 def main() -> None:
     args = build_parser().parse_args()
-    pin = GPIOOutputPin(args.pin)
+    pin = GPIOOutputPin(args.pin, active_low=args.active_low)
     is_on = False
 
-    print(f"Using Jetson.GPIO pin {args.pin} via {pin.backend_name}")
+    print(f"Using Jetson Nano GPIO pin {args.pin} via {pin.backend_name}")
     print("Press SPACE to toggle air pressure. Press q to quit.")
 
     try:
@@ -69,11 +81,11 @@ def main() -> None:
                 if is_on:
                     pin.off()
                     is_on = False
-                    print("\rAir pressure OFF", flush=True)
+                    print(f"\rAir pressure OFF{state_suffix(pin)}", flush=True)
                 else:
                     pin.on()
                     is_on = True
-                    print("\rAir pressure ON ", flush=True)
+                    print(f"\rAir pressure ON {state_suffix(pin)}", flush=True)
     except KeyboardInterrupt:
         print()
     finally:

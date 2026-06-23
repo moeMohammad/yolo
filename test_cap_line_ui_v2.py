@@ -79,7 +79,10 @@ class CapLineUiV2Tests(unittest.TestCase):
     def test_trigger_pin_label_clarifies_jetson_gpio_board_numbering(self) -> None:
         ui_module = load_module("cap_line_ui_v2")
 
-        self.assertIn("Trigger GPIO09 (BOARD pin 7)", ui_module.CALIBRATION_FIELD_LABELS)
+        self.assertIn(
+            "Trigger GPIO09 (Jetson BOARD pin 7)",
+            ui_module.CALIBRATION_FIELD_LABELS,
+        )
         self.assertNotIn("Trigger Pin", ui_module.CALIBRATION_FIELD_LABELS)
 
     def test_removed_policy_controls_are_absent_from_v2_ui(self) -> None:

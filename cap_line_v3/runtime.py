@@ -16,7 +16,7 @@ from gpio_output import GPIOOutputPin
 from .actuation import NullGPIOOutputPin, RejectScheduler
 from .config import DEFAULT_MODEL, RuntimeConfig, validate_config
 from .decision import TrackedCap, decide_decision_ready
-from .geometry import box_spans_line_coordinate, frame_line_coordinate
+from .geometry import box_spans_line_coordinate, class_name, frame_line_coordinate
 from .pairing import select_synchronized_frame_pair
 from .preview import resolve_preview_views
 from .types import (
@@ -272,9 +272,10 @@ def draw_boxes(frame, boxes: tuple[Box, ...]):
     for box in boxes:
         x1, y1, x2, y2, conf, cls = box
         color = (0, 0, 255) if int(cls) == 1 else (0, 200, 0)
+        label = class_name(int(cls)) or str(int(cls))
         try:
             cv2.rectangle(frame, (int(round(x1)), int(round(y1))), (int(round(x2)), int(round(y2))), color, 2)
-            cv2.putText(frame, f"{int(cls)}:{conf:.2f}", (int(round(x1)), max(0, int(round(y1)) - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+            cv2.putText(frame, f"{label}:{conf:.2f}", (int(round(x1)), max(0, int(round(y1)) - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
         except Exception:
             return frame
     return frame
@@ -521,6 +522,8 @@ class LivePreviewPublisher:
                     current_packet,
                     live_frames,
                     target_fps=self.overlay_target_fps,
+                    anchor_axis=self.anchor_axis,
+                    anchor_line_ratio=self.anchor_line_ratio,
                     preview_latency_compensation_ms=self.preview_latency_compensation_ms,
                 )
                 annotated = []
@@ -696,6 +699,8 @@ def run_detection(
     preprocess_fn: Callable[[object, int], tuple[object, dict]] | None = None,
     postprocess_fn: Callable[..., list[list[float]]] | None = None,
     compose_preview_fn: Callable[[list[object]], object] | None = None,
+    draw_boxes_fn: Callable[[object, tuple[Box, ...]], object] | None = None,
+    draw_anchor_line_fn: Callable[[object, str, float], object] | None = None,
     time_fn: Callable[[], float] = time.monotonic,
     sleep_fn: Callable[[float], None] = time.sleep,
 ) -> None:
@@ -741,6 +746,8 @@ def run_detection(
             overlay_target_fps=config.target_fps,
             stop_event=stop_event,
             compose_preview_fn=active_compose_preview,
+            draw_boxes_fn=draw_boxes_fn,
+            draw_anchor_line_fn=draw_anchor_line_fn,
             preview_latency_compensation_ms=config.preview_latency_compensation_ms,
             time_fn=time_fn,
             sleep_fn=sleep_fn,

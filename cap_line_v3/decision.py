@@ -184,28 +184,40 @@ def decide_tracked_cap(
     )
     if trigger is not None:
         return trigger
-    evaluation = build_evaluation(tracked_cap.camera_summaries, camera_count=camera_count)
+
+    if tracked_cap.actuation_time is None:
+        evaluation = build_evaluation({}, camera_count=camera_count)
+        return _build_decision(
+            result="skip",
+            final_class_name=None,
+            final_score=None,
+            decision_source="no_actuation_crossing",
+            evaluation=evaluation,
+            anchor_time=_anchor_time(tracked_cap),
+            decision_ready_time=decision_time,
+            config=config,
+        )
+
+    evaluation = build_evaluation(tracked_cap.actuation_camera_summaries, camera_count=camera_count)
     if evaluation.total_observations <= 0:
         return _build_decision(
             result="skip",
             final_class_name=None,
             final_score=None,
-            decision_source="no_observations",
+            decision_source="no_actuation_observations",
             evaluation=evaluation,
             anchor_time=_anchor_time(tracked_cap),
             decision_ready_time=decision_time,
             config=config,
         )
     final_class_id = DEFECT_CLASS_ID if evaluation.dirt_score >= float(config.reject_threshold) else 0
-    decision_source = "no_actuation_crossing" if tracked_cap.actuation_time is None else "below_reject_threshold"
     return _build_decision(
         result="skip",
         final_class_name=class_name(final_class_id),
         final_score=evaluation.class_scores.get(final_class_id, 0.0),
-        decision_source=decision_source,
+        decision_source="below_reject_threshold",
         evaluation=evaluation,
         anchor_time=_anchor_time(tracked_cap),
         decision_ready_time=decision_time,
         config=config,
-        review_reason="missed_actuation" if final_class_id == DEFECT_CLASS_ID else None,
     )
