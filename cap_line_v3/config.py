@@ -16,6 +16,7 @@ DEFAULT_MODEL = "dirtv2.onnx"
 DEFAULT_CAMERA_RESOLUTION = (960, 600)
 DEFAULT_CAMERA_FPS = 60
 DEFAULT_CAMERA_PIXEL_FORMAT = "YUYV"
+DEFAULT_MIRROR_CAMERAS = (False, True)
 TRACKING_DETECTION_THRESHOLD = 0.45
 DEFECT_REJECT_THRESHOLD = 0.45
 DEFAULT_PAIR_MAX_SKEW_MS = 40.0
@@ -39,6 +40,7 @@ DEFAULT_SAVE_QUEUE_WARNING_THRESHOLD = 25
 class RuntimeConfig:
     model: str = DEFAULT_MODEL
     cameras: tuple[str, str] = ("0", "3")
+    mirror_cameras: tuple[bool, bool] = DEFAULT_MIRROR_CAMERAS
     resolution: tuple[int, int] = DEFAULT_CAMERA_RESOLUTION
     target_fps: int = DEFAULT_CAMERA_FPS
     pixel_format: str = DEFAULT_CAMERA_PIXEL_FORMAT
@@ -84,6 +86,7 @@ class RuntimeConfig:
     def to_json_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["cameras"] = list(self.cameras)
+        data["mirror_cameras"] = list(self.mirror_cameras)
         data["resolution"] = list(self.resolution)
         return data
 
@@ -95,6 +98,10 @@ class RuntimeConfig:
         if float(merged.get("anchor_line_ratio", defaults.anchor_line_ratio)) <= 0.60:
             merged["anchor_line_ratio"] = defaults.anchor_line_ratio
         merged["cameras"] = tuple(str(value) for value in merged["cameras"])  # type: ignore[assignment]
+        mirror_cameras = list(merged.get("mirror_cameras", defaults.mirror_cameras))
+        if len(mirror_cameras) != 2:
+            mirror_cameras = list(defaults.mirror_cameras)
+        merged["mirror_cameras"] = tuple(bool(value) for value in mirror_cameras)  # type: ignore[assignment]
         merged["resolution"] = tuple(int(value) for value in merged["resolution"])  # type: ignore[assignment]
         return cls(**merged)
 
@@ -107,6 +114,8 @@ def normalize_pixel_format(pixel_format: str) -> str:
 def validate_config(config: RuntimeConfig) -> None:
     if len(config.cameras) != 2:
         raise ValueError("V3 requires exactly two cameras")
+    if len(config.mirror_cameras) != 2:
+        raise ValueError("mirror_cameras must contain exactly two values")
     if int(config.resolution[0]) <= 0 or int(config.resolution[1]) <= 0:
         raise ValueError("resolution must be positive")
     if int(config.target_fps) <= 0:
@@ -149,6 +158,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--model", default=defaults.model)
     parser.add_argument("--cams", nargs=2, default=list(defaults.cameras))
+    parser.add_argument("--mirror-camera-0", action=argparse.BooleanOptionalAction, default=defaults.mirror_cameras[0])
+    parser.add_argument("--mirror-camera-1", action=argparse.BooleanOptionalAction, default=defaults.mirror_cameras[1])
     parser.add_argument("--res", type=int, nargs=2, default=list(defaults.resolution))
     parser.add_argument("--target-fps", "--fps", type=int, default=defaults.target_fps)
     parser.add_argument("--pixel-format", default=defaults.pixel_format)
@@ -193,6 +204,7 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
     config = RuntimeConfig(
         model=args.model,
         cameras=tuple(str(value) for value in args.cams),  # type: ignore[arg-type]
+        mirror_cameras=(bool(args.mirror_camera_0), bool(args.mirror_camera_1)),
         resolution=(int(args.res[0]), int(args.res[1])),
         target_fps=int(args.target_fps),
         pixel_format=normalize_pixel_format(args.pixel_format),

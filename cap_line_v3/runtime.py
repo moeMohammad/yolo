@@ -347,11 +347,33 @@ def compose_preview(frames: list[object]):
     return np.hstack(parts)
 
 
+def mirror_frame_horizontal(frame):
+    try:
+        mirrored = frame[:, ::-1]
+        return mirrored.copy() if hasattr(mirrored, "copy") else mirrored
+    except Exception:
+        pass
+    try:
+        import cv2
+
+        return cv2.flip(frame, 1)
+    except Exception:
+        return frame
+
+
 class DirectCameraReader:
-    def __init__(self, camera, camera_index: int, time_fn: Callable[[], float]):
+    def __init__(
+        self,
+        camera,
+        camera_index: int,
+        time_fn: Callable[[], float],
+        *,
+        mirror_horizontal: bool = False,
+    ):
         self.camera = camera
         self.camera_index = int(camera_index)
         self.time_fn = time_fn
+        self.mirror_horizontal = bool(mirror_horizontal)
         self.sequence = 0
         self.captured = 0
 
@@ -364,6 +386,8 @@ class DirectCameraReader:
         captured_at = float(self.time_fn())
         if not ok or frame is None:
             return None
+        if self.mirror_horizontal:
+            frame = mirror_frame_horizontal(frame)
         self.sequence += 1
         self.captured += 1
         return CapturedFrame(self.camera_index, frame, captured_at, self.sequence, (captured_at - started) * 1000.0)
@@ -381,12 +405,14 @@ class LatestFrameCameraReader:
         camera_index: int,
         *,
         target_fps: int | float | None,
+        mirror_horizontal: bool = False,
         time_fn: Callable[[], float] = time.monotonic,
         sleep_fn: Callable[[float], None] = time.sleep,
     ):
         self.camera = camera
         self.camera_index = int(camera_index)
         self.target_fps = None if target_fps is None else float(target_fps)
+        self.mirror_horizontal = bool(mirror_horizontal)
         self.time_fn = time_fn
         self.sleep_fn = sleep_fn
         self._stop_event = threading.Event()
@@ -434,6 +460,8 @@ class LatestFrameCameraReader:
                 ok, frame = False, None
             captured_at = float(self.time_fn())
             if ok and frame is not None:
+                if self.mirror_horizontal:
+                    frame = mirror_frame_horizontal(frame)
                 with self._lock:
                     self._captured += 1
                     self._latest = CapturedFrame(
@@ -798,6 +826,7 @@ def run_detection(
             camera,
             index,
             target_fps=config.target_fps,
+            mirror_horizontal=config.mirror_cameras[index],
             time_fn=time_fn,
             sleep_fn=sleep_fn,
         )

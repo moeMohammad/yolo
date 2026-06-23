@@ -28,6 +28,8 @@ CONFIG_FIELD_LABELS = (
     "Model",
     "Camera 0",
     "Camera 1",
+    "Mirror Camera 0",
+    "Mirror Camera 1",
     "Width",
     "Height",
     "Camera Target FPS",
@@ -411,6 +413,8 @@ if PYQT_AVAILABLE:
             self.model_input = QLineEdit()
             self.cam0_input = QLineEdit()
             self.cam1_input = QLineEdit()
+            self.mirror_camera0_checkbox = QCheckBox()
+            self.mirror_camera1_checkbox = QCheckBox()
             self.width_spin = QSpinBox(); self.width_spin.setRange(160, 4096)
             self.height_spin = QSpinBox(); self.height_spin.setRange(120, 4096)
             self.target_fps_spin = QSpinBox(); self.target_fps_spin.setRange(1, 240)
@@ -438,6 +442,8 @@ if PYQT_AVAILABLE:
                 ("Model", self.model_input),
                 ("Camera 0", self.cam0_input),
                 ("Camera 1", self.cam1_input),
+                ("Mirror Camera 0", self.mirror_camera0_checkbox),
+                ("Mirror Camera 1", self.mirror_camera1_checkbox),
                 ("Width", self.width_spin),
                 ("Height", self.height_spin),
                 ("Camera Target FPS", self.target_fps_spin),
@@ -482,6 +488,8 @@ if PYQT_AVAILABLE:
             self.model_input.setText(config.model)
             self.cam0_input.setText(config.cameras[0])
             self.cam1_input.setText(config.cameras[1])
+            self.mirror_camera0_checkbox.setChecked(config.mirror_cameras[0])
+            self.mirror_camera1_checkbox.setChecked(config.mirror_cameras[1])
             self.width_spin.setValue(config.resolution[0])
             self.height_spin.setValue(config.resolution[1])
             self.target_fps_spin.setValue(config.target_fps)
@@ -510,6 +518,10 @@ if PYQT_AVAILABLE:
             config = RuntimeConfig(
                 model=self.model_input.text().strip() or RuntimeConfig.defaults().model,
                 cameras=(self.cam0_input.text().strip() or "0", self.cam1_input.text().strip() or "3"),
+                mirror_cameras=(
+                    self.mirror_camera0_checkbox.isChecked(),
+                    self.mirror_camera1_checkbox.isChecked(),
+                ),
                 resolution=(self.width_spin.value(), self.height_spin.value()),
                 target_fps=self.target_fps_spin.value(),
                 exposure=self.exposure_spin.value(),
