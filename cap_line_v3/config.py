@@ -30,6 +30,7 @@ DEFAULT_FINALIZE_QUIET_MS = 30.0
 DEFAULT_LATENCY_COMPENSATION_MS = 50.0
 DEFAULT_PREVIEW_LATENCY_COMPENSATION_MS = 0.0
 DEFAULT_LIVE_PREVIEW_FPS = 30.0
+DEFAULT_ANCHOR_LINE_RATIO = 0.60
 DEFAULT_ACTUATION_SNAPSHOT_HOLD_MS = 450.0
 DEFAULT_SAVE_QUEUE_WARNING_THRESHOLD = 25
 
@@ -55,7 +56,7 @@ class RuntimeConfig:
     finalize_quiet_ms: float = DEFAULT_FINALIZE_QUIET_MS
     timing_camera: int = 0
     anchor_axis: str = "x"
-    anchor_line_ratio: float = 0.5
+    anchor_line_ratio: float = DEFAULT_ANCHOR_LINE_RATIO
     nozzle_distance_mm: float = DEFAULT_NOZZLE_DISTANCE_MM
     belt_speed_mm_per_s: float = DEFAULT_BELT_SPEED_MM_PER_S
     trigger_offset_s: float = DEFAULT_TRIGGER_OFFSET_S

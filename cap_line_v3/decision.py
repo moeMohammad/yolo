@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .config import DEFECT_CLASS_ID, RuntimeConfig
+from .config import DEFAULT_ANCHOR_LINE_RATIO, DEFECT_CLASS_ID, RuntimeConfig
 from .geometry import (
     box_center_value,
     box_crossed_line_between,
@@ -43,7 +43,7 @@ class TrackedCap:
         observation: TrackObservation,
         *,
         anchor_axis: str = "x",
-        anchor_line_ratio: float = 0.5,
+        anchor_line_ratio: float = DEFAULT_ANCHOR_LINE_RATIO,
     ) -> None:
         previous_box = self.latest_box_by_camera.get(int(observation.camera_index))
         self.last_seen_at = max(float(self.last_seen_at), float(observation.timestamp))

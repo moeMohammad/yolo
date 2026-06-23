@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .config import DEFAULT_ANCHOR_LINE_RATIO
 from .geometry import (
     box_center,
     box_crossed_line_between,
@@ -111,7 +112,7 @@ def resolve_preview_views(
     *,
     target_fps: int | float,
     anchor_axis: str = "x",
-    anchor_line_ratio: float = 0.5,
+    anchor_line_ratio: float = DEFAULT_ANCHOR_LINE_RATIO,
     preview_latency_compensation_ms: int | float = 0.0,
 ) -> tuple[CameraPreviewView, ...]:
     if current_packet is None:
@@ -164,7 +165,7 @@ def predict_preview_overlay(
     *,
     target_fps: int | float,
     anchor_axis: str = "x",
-    anchor_line_ratio: float = 0.5,
+    anchor_line_ratio: float = DEFAULT_ANCHOR_LINE_RATIO,
     preview_latency_compensation_ms: int | float = 0.0,
 ) -> tuple[tuple[Box, ...], ...]:
     return tuple(
