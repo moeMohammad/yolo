@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .geometry import box_spans_line_coordinate, frame_line_coordinate
+from .geometry import (
+    box_center,
+    box_crossed_line_between,
+    box_spans_line_coordinate,
+    boxes_look_like_same_cap,
+    frame_line_coordinate,
+)
 from .types import Box, CapturedFrame, DetectionPacket
 
 
@@ -46,6 +52,7 @@ def _actuation_line_boxes(
     captured: CapturedFrame,
     boxes: tuple[Box, ...],
     *,
+    previous_boxes: tuple[Box, ...] = (),
     anchor_axis: str,
     anchor_line_ratio: float,
 ) -> tuple[Box, ...]:
@@ -57,14 +64,37 @@ def _actuation_line_boxes(
         axis=anchor_axis,
         ratio=anchor_line_ratio,
     )
-    return tuple(
-        box
-        for box in boxes
+    actuation_boxes = []
+    for box in boxes:
         if box_spans_line_coordinate(
             box,
             axis=anchor_axis,
             line_coordinate=line_coordinate,
-        )
+        ):
+            actuation_boxes.append(box)
+            continue
+        previous_box = _match_previous_box(box, previous_boxes)
+        if previous_box is None:
+            continue
+        if box_crossed_line_between(
+            previous_box,
+            box,
+            axis=anchor_axis,
+            line_coordinate=line_coordinate,
+        ):
+            actuation_boxes.append(box)
+    return tuple(actuation_boxes)
+
+
+def _match_previous_box(box: Box, previous_boxes: tuple[Box, ...]) -> Box | None:
+    plausible = tuple(candidate for candidate in previous_boxes if boxes_look_like_same_cap(box, candidate))
+    if not plausible:
+        return None
+    center_x, center_y = box_center(box)
+    return min(
+        plausible,
+        key=lambda candidate: abs(box_center(candidate)[0] - center_x)
+        + abs(box_center(candidate)[1] - center_y),
     )
 
 
@@ -95,9 +125,15 @@ def resolve_preview_views(
     for camera_index, live_frame in enumerate(live_frames):
         detection_frame = current_packet.frame_pair.frames[camera_index]
         current_timestamp = current_timestamps[camera_index]
+        previous_boxes = (
+            previous_packet.boxes_by_camera[camera_index]
+            if previous_packet is not None and camera_index < len(previous_packet.boxes_by_camera)
+            else ()
+        )
         actuation_boxes = _actuation_line_boxes(
             detection_frame,
             current_packet.boxes_by_camera[camera_index],
+            previous_boxes=previous_boxes,
             anchor_axis=anchor_axis,
             anchor_line_ratio=anchor_line_ratio,
         )

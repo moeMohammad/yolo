@@ -15,10 +15,10 @@ from gpio_output import GPIOOutputPin
 
 from .actuation import NullGPIOOutputPin, RejectScheduler
 from .config import DEFAULT_MODEL, RuntimeConfig, validate_config
-from .decision import TrackedCap, decide_decision_ready
+from .decision import TrackedCapManager, decide_decision_ready
 from .geometry import box_spans_line_coordinate, class_name, frame_line_coordinate
 from .pairing import select_synchronized_frame_pair
-from .preview import resolve_preview_views
+from .preview import CameraPreviewView, resolve_preview_views
 from .types import (
     Box,
     CapturedFrame,
@@ -35,6 +35,7 @@ MODEL_SEARCH_DIRS = (Path(__file__).resolve().parent.parent, Path(__file__).reso
 CAP_PROP_FRAME_WIDTH = 3
 CAP_PROP_FRAME_HEIGHT = 4
 CAP_PROP_FPS = 5
+MIN_CAP_FINALIZE_QUIET_S = 0.50
 
 
 def format_timestamp(clock_origin_wall: datetime, origin_monotonic: float, timestamp: float) -> str:
@@ -468,6 +469,7 @@ class LivePreviewPublisher:
         draw_boxes_fn: Callable[[object, tuple[Box, ...]], object] | None = None,
         draw_anchor_line_fn: Callable[[object, str, float], object] | None = None,
         preview_latency_compensation_ms: int | float = 0.0,
+        actuation_snapshot_hold_ms: int | float = 0.0,
         time_fn: Callable[[], float] = time.monotonic,
         sleep_fn: Callable[[float], None] = time.sleep,
     ):
@@ -482,12 +484,15 @@ class LivePreviewPublisher:
         self.draw_boxes_fn = draw_boxes_fn or draw_boxes
         self.draw_anchor_line_fn = draw_anchor_line_fn or draw_anchor_line
         self.preview_latency_compensation_ms = float(preview_latency_compensation_ms)
+        self.actuation_snapshot_hold_s = max(0.0, float(actuation_snapshot_hold_ms) / 1000.0)
         self.time_fn = time_fn
         self.sleep_fn = sleep_fn
         self._stop_event = threading.Event()
         self._overlay_lock = threading.Lock()
         self._previous_packet: DetectionPacket | None = None
         self._current_packet: DetectionPacket | None = None
+        self._snapshot_lock = threading.Lock()
+        self._actuation_snapshots: dict[int, tuple[float, CameraPreviewView]] = {}
         self._stats_lock = threading.Lock()
         self._published_count = 0
         self._latest_overlay_age_ms: float | None = None
@@ -556,6 +561,7 @@ class LivePreviewPublisher:
                     anchor_line_ratio=self.anchor_line_ratio,
                     preview_latency_compensation_ms=self.preview_latency_compensation_ms,
                 )
+                preview_views = self._hold_actuation_snapshots(preview_views)
                 annotated = []
                 for view in preview_views:
                     captured = view.captured
@@ -580,6 +586,37 @@ class LivePreviewPublisher:
                 remaining_s = min_interval_s - (float(self.time_fn()) - loop_started_at)
                 if remaining_s > 0.0:
                     self.sleep_fn(remaining_s)
+
+    def _hold_actuation_snapshots(
+        self,
+        preview_views: tuple[CameraPreviewView, ...],
+    ) -> tuple[CameraPreviewView, ...]:
+        if self.actuation_snapshot_hold_s <= 0.0:
+            return preview_views
+        now = float(self.time_fn())
+        held_views = list(preview_views)
+        with self._snapshot_lock:
+            expired = [
+                camera_index
+                for camera_index, (expires_at, _view) in self._actuation_snapshots.items()
+                if expires_at <= now
+            ]
+            for camera_index in expired:
+                self._actuation_snapshots.pop(camera_index, None)
+
+            for camera_index, view in enumerate(preview_views):
+                if view.boxes:
+                    self._actuation_snapshots[camera_index] = (
+                        now + self.actuation_snapshot_hold_s,
+                        view,
+                    )
+                    continue
+                snapshot = self._actuation_snapshots.get(camera_index)
+                if snapshot is None:
+                    continue
+                _expires_at, snapshot_view = snapshot
+                held_views[camera_index] = snapshot_view
+        return tuple(held_views)
 
 
 def _frame_size(frame) -> tuple[int, int]:
@@ -786,6 +823,7 @@ def run_detection(
             draw_boxes_fn=draw_boxes_fn,
             draw_anchor_line_fn=draw_anchor_line_fn,
             preview_latency_compensation_ms=config.preview_latency_compensation_ms,
+            actuation_snapshot_hold_ms=config.actuation_snapshot_hold_ms,
             time_fn=time_fn,
             sleep_fn=sleep_fn,
         )
@@ -809,7 +847,20 @@ def run_detection(
     dropped_pairs = 0
     last_sequences: tuple[int, ...] | None = None
     current_packet: DetectionPacket | None = None
-    tracked_cap: TrackedCap | None = None
+    cap_manager = TrackedCapManager(
+        camera_count=len(camera_sources),
+        merge_window_seconds=max(
+            float(config.merge_window_ms) / 1000.0,
+            float(config.pair_max_skew_ms) / 1000.0,
+        ),
+        finalize_quiet_seconds=max(
+            float(config.finalize_quiet_ms) / 1000.0,
+            MIN_CAP_FINALIZE_QUIET_S,
+        ),
+        anchor_axis=config.anchor_axis,
+        anchor_line_ratio=config.anchor_line_ratio,
+    )
+    queued_trigger_event_ids: set[int] = set()
     inference_executor: concurrent.futures.ThreadPoolExecutor | None = None
     if not config.serial_inference:
         inference_executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(camera_sources))
@@ -876,12 +927,20 @@ def run_detection(
             if live_preview is not None:
                 live_preview.update_packet(packet)
             if observations:
-                if tracked_cap is None:
-                    tracked_cap = TrackedCap(event_id=1, created_at=frame_pair.pair_timestamp, last_seen_at=frame_pair.pair_timestamp)
-                for observation in observations:
-                    tracked_cap.add_observation(observation)
-                decision = decide_decision_ready(tracked_cap, config=config, decision_ready_time=clock.monotonic(), camera_count=len(camera_sources))
+                cap_manager.update(observations)
+
+            decision_ready_time = clock.monotonic()
+            for tracked_cap in cap_manager.open_caps():
+                if tracked_cap.event_id in queued_trigger_event_ids:
+                    continue
+                decision = decide_decision_ready(
+                    tracked_cap,
+                    config=config,
+                    decision_ready_time=decision_ready_time,
+                    camera_count=len(camera_sources),
+                )
                 if decision is not None:
+                    queued_trigger_event_ids.add(tracked_cap.event_id)
                     scheduler.enqueue(tracked_cap.event_id, decision.requested_fire_time)
                     history = _record_history(tracked_cap.event_id, decision, clock, config)
                     timing = _timing_record(tracked_cap.event_id, decision, clock)
@@ -897,6 +956,7 @@ def run_detection(
                         callbacks.history_callback(history)
                     if callbacks.timing_log_callback:
                         callbacks.timing_log_callback(timing)
+            cap_manager.pop_finalized(decision_ready_time)
 
             frame_count += 1
             elapsed = max(0.000001, clock.monotonic() - start_time)

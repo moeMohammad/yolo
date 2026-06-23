@@ -19,6 +19,11 @@ def box_center(box: Box) -> tuple[float, float]:
     return ((x1 + x2) * 0.5, (y1 + y2) * 0.5)
 
 
+def box_center_value(box: Box, axis: str) -> float:
+    center_x, center_y = box_center(box)
+    return center_x if axis == "x" else center_y
+
+
 def box_area(box: Box) -> float:
     x1, y1, x2, y2 = box[:4]
     return max(0.0, x2 - x1) * max(0.0, y2 - y1)
@@ -55,6 +60,11 @@ def box_size_ratio(box_a: Box, box_b: Box) -> float:
     return smallest / largest
 
 
+def box_size_along_axis(box: Box, axis: str) -> float:
+    x1, y1, x2, y2 = box[:4]
+    return abs((x2 - x1) if axis == "x" else (y2 - y1))
+
+
 def boxes_look_like_same_cap(box_a: Box, box_b: Box) -> bool:
     if box_iou(box_a, box_b) >= 0.01:
         return True
@@ -67,6 +77,25 @@ def box_spans_line_coordinate(box: Box, *, axis: str, line_coordinate: float) ->
     x1, y1, x2, y2 = box[:4]
     start, end = (x1, x2) if axis == "x" else (y1, y2)
     return min(start, end) <= line_coordinate <= max(start, end)
+
+
+def box_crossed_line_between(
+    previous_box: Box,
+    current_box: Box,
+    *,
+    axis: str,
+    line_coordinate: float,
+) -> bool:
+    previous_value = box_center_value(previous_box, axis)
+    current_value = box_center_value(current_box, axis)
+    lower = min(previous_value, current_value)
+    upper = max(previous_value, current_value)
+    return lower <= line_coordinate <= upper and not math.isclose(
+        previous_value,
+        current_value,
+        rel_tol=0.0,
+        abs_tol=1e-9,
+    )
 
 
 def frame_line_coordinate(frame_size: tuple[int, int], *, axis: str, ratio: float) -> float:

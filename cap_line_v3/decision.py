@@ -3,7 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .config import DEFECT_CLASS_ID, RuntimeConfig
-from .geometry import class_name
+from .geometry import (
+    box_center_value,
+    box_crossed_line_between,
+    box_size_along_axis,
+    boxes_look_like_same_cap,
+    class_name,
+    frame_line_coordinate,
+)
 from .types import CameraObservationSummary, CameraVote, CapEvaluation, TrackObservation, TrackedCapDecision
 
 
@@ -23,15 +30,28 @@ class TrackedCap:
     camera_summaries: dict[int, CameraObservationSummary] = field(default_factory=dict)
     actuation_camera_summaries: dict[int, CameraObservationSummary] = field(default_factory=dict)
     camera_indices: set[int] = field(default_factory=set)
+    latest_box_by_camera: dict[int, tuple[float, float, float, float, float, int]] = field(default_factory=dict)
+    box_history_by_camera: dict[int, list[tuple[float, float, float, float, float, int]]] = field(default_factory=dict)
     anchor_time: float | None = None
     anchor_camera_index: int | None = None
     actuation_time: float | None = None
     actuation_camera_index: int | None = None
     trigger_decision: TrackedCapDecision | None = None
 
-    def add_observation(self, observation: TrackObservation) -> None:
+    def add_observation(
+        self,
+        observation: TrackObservation,
+        *,
+        anchor_axis: str = "x",
+        anchor_line_ratio: float = 0.5,
+    ) -> None:
+        previous_box = self.latest_box_by_camera.get(int(observation.camera_index))
         self.last_seen_at = max(float(self.last_seen_at), float(observation.timestamp))
         self.camera_indices.add(int(observation.camera_index))
+        self.latest_box_by_camera[int(observation.camera_index)] = observation.box
+        box_history = self.box_history_by_camera.setdefault(int(observation.camera_index), [])
+        box_history.append(observation.box)
+        del box_history[:-3]
         summary = self.camera_summaries.setdefault(
             int(observation.camera_index),
             CameraObservationSummary(),
@@ -41,7 +61,22 @@ class TrackedCap:
             self.anchor_time = float(observation.timestamp)
             self.anchor_camera_index = int(observation.camera_index)
 
-        if observation.at_actuation_line:
+        line_coordinate = frame_line_coordinate(
+            observation.frame_size,
+            axis=anchor_axis,
+            ratio=anchor_line_ratio,
+        )
+        at_actuation = observation.at_actuation_line or (
+            previous_box is not None
+            and box_crossed_line_between(
+                previous_box,
+                observation.box,
+                axis=anchor_axis,
+                line_coordinate=line_coordinate,
+            )
+        )
+
+        if at_actuation:
             actuation_summary = self.actuation_camera_summaries.setdefault(
                 int(observation.camera_index),
                 CameraObservationSummary(),
@@ -54,6 +89,125 @@ class TrackedCap:
             if self.actuation_time is None or observation.timestamp < self.actuation_time:
                 self.actuation_time = float(observation.timestamp)
                 self.actuation_camera_index = int(observation.camera_index)
+
+
+def _moves_backward_against_history(
+    box: tuple[float, float, float, float, float, int],
+    history: list[tuple[float, float, float, float, float, int]],
+    *,
+    axis: str,
+) -> bool:
+    if len(history) < 2:
+        return False
+    previous_box = history[-2]
+    latest_box = history[-1]
+    previous_center = box_center_value(previous_box, axis)
+    latest_center = box_center_value(latest_box, axis)
+    candidate_center = box_center_value(box, axis)
+    direction = latest_center - previous_center
+    if abs(direction) < 1.0:
+        return False
+    sign = 1.0 if direction > 0.0 else -1.0
+    progress = (candidate_center - latest_center) * sign
+    size = max(1.0, box_size_along_axis(latest_box, axis), box_size_along_axis(box, axis))
+    return progress < -0.5 * size
+
+
+class TrackedCapManager:
+    def __init__(
+        self,
+        *,
+        camera_count: int,
+        merge_window_seconds: float,
+        finalize_quiet_seconds: float,
+        anchor_axis: str,
+        anchor_line_ratio: float,
+    ):
+        self.camera_count = int(camera_count)
+        self.merge_window_seconds = float(merge_window_seconds)
+        self.finalize_quiet_seconds = float(finalize_quiet_seconds)
+        self.anchor_axis = anchor_axis
+        self.anchor_line_ratio = float(anchor_line_ratio)
+        self._open_caps: list[TrackedCap] = []
+        self._next_event_id = 1
+
+    def update(self, observations: list[TrackObservation]) -> list[TrackedCap]:
+        touched_caps: list[TrackedCap] = []
+        touched_ids: set[int] = set()
+        matched_camera_keys: set[tuple[int, int]] = set()
+        for observation in observations:
+            tracked_cap = self._find_match(observation, matched_camera_keys=matched_camera_keys)
+            if tracked_cap is None:
+                tracked_cap = TrackedCap(
+                    event_id=self._next_event_id,
+                    created_at=observation.timestamp,
+                    last_seen_at=observation.timestamp,
+                )
+                self._next_event_id += 1
+                self._open_caps.append(tracked_cap)
+            tracked_cap.add_observation(
+                observation,
+                anchor_axis=self.anchor_axis,
+                anchor_line_ratio=self.anchor_line_ratio,
+            )
+            matched_camera_keys.add((tracked_cap.event_id, int(observation.camera_index)))
+            self._mark_recent(tracked_cap)
+            if tracked_cap.event_id not in touched_ids:
+                touched_ids.add(tracked_cap.event_id)
+                touched_caps.append(tracked_cap)
+        return touched_caps
+
+    def open_caps(self) -> tuple[TrackedCap, ...]:
+        return tuple(self._open_caps)
+
+    def pop_finalized(self, now: float) -> list[TrackedCap]:
+        finalized = []
+        remaining = []
+        quiet_seconds = max(self.finalize_quiet_seconds, self.merge_window_seconds)
+        for tracked_cap in self._open_caps:
+            if float(now) - float(tracked_cap.last_seen_at) < quiet_seconds:
+                remaining.append(tracked_cap)
+                continue
+            finalized.append(tracked_cap)
+        self._open_caps = remaining
+        return finalized
+
+    def _find_match(
+        self,
+        observation: TrackObservation,
+        *,
+        matched_camera_keys: set[tuple[int, int]],
+    ) -> TrackedCap | None:
+        camera_index = int(observation.camera_index)
+        for tracked_cap in reversed(self._open_caps):
+            if (tracked_cap.event_id, camera_index) in matched_camera_keys:
+                continue
+            latest_box = tracked_cap.latest_box_by_camera.get(camera_index)
+            if latest_box is None:
+                continue
+            history = tracked_cap.box_history_by_camera.get(camera_index, [])
+            if _moves_backward_against_history(observation.box, history, axis=self.anchor_axis):
+                continue
+            if boxes_look_like_same_cap(observation.box, latest_box):
+                return tracked_cap
+
+        cross_camera_candidates = [
+            tracked_cap
+            for tracked_cap in self._open_caps
+            if (tracked_cap.event_id, camera_index) not in matched_camera_keys
+            and camera_index not in tracked_cap.camera_indices
+            and (float(observation.timestamp) - float(tracked_cap.last_seen_at)) <= self.merge_window_seconds
+        ]
+        if not cross_camera_candidates:
+            return None
+        return max(cross_camera_candidates, key=lambda tracked_cap: tracked_cap.last_seen_at)
+
+    def _mark_recent(self, tracked_cap: TrackedCap) -> None:
+        try:
+            self._open_caps.remove(tracked_cap)
+        except ValueError:
+            pass
+        self._open_caps.append(tracked_cap)
 
 
 def build_camera_vote(summary: CameraObservationSummary | None, *, camera_index: int) -> CameraVote:

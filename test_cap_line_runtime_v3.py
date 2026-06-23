@@ -177,6 +177,35 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
 
         self.assertEqual(((),), overlay)
 
+    def test_preview_draws_crossing_box_when_detection_skips_line(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+        frame_shape = (40, 100, 3)
+        previous = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, FakeFrame("previous", frame_shape), 1.00, 1),),
+                pair_timestamp=1.00,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((15.0, 10.0, 40.0, 20.0, 0.9, 1),),),
+            inference_ms_by_camera=(1.0,),
+        )
+        current = module.DetectionPacket(
+            frame_pair=module.FramePair(
+                frames=(module.CapturedFrame(0, FakeFrame("processed", frame_shape), 1.10, 2),),
+                pair_timestamp=1.10,
+                skew_ms=0.0,
+            ),
+            boxes_by_camera=(((60.0, 10.0, 85.0, 20.0, 0.9, 1),),),
+            inference_ms_by_camera=(1.0,),
+        )
+        live_frames = (module.CapturedFrame(0, FakeFrame("live", frame_shape), 1.11, 3),)
+
+        overlay = module.predict_preview_overlay(previous, current, live_frames, target_fps=60)
+
+        self.assertEqual(1, len(overlay[0]))
+        self.assertAlmostEqual(60.0, overlay[0][0][0])
+        self.assertAlmostEqual(85.0, overlay[0][0][2])
+
     def test_preview_hides_stale_actuation_overlay(self) -> None:
         module = load_module("cap_line_runtime_v3")
         packet = module.DetectionPacket(
@@ -372,6 +401,82 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
         self.assertAlmostEqual(28.0, drawn_boxes[0][1][0][0])
         self.assertAlmostEqual(36.0, drawn_boxes[0][1][0][2])
 
+    def test_live_preview_publisher_holds_actuation_snapshot_after_next_packet(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+
+        class FakeReader:
+            def __init__(self):
+                self.sequence = 3
+
+            def latest(self):
+                self.sequence += 1
+                return module.CapturedFrame(
+                    camera_index=0,
+                    frame=FakeFrame(f"live-{self.sequence}"),
+                    timestamp=1.20,
+                    sequence=self.sequence,
+                )
+
+        drawn_boxes = []
+        previews = []
+        stop_event = module.threading.Event()
+
+        def fake_draw_boxes(frame, boxes):
+            drawn_boxes.append((frame.label, [[float(value) for value in box] for box in boxes]))
+            return frame
+
+        publisher = None
+
+        def capture_preview(preview):
+            previews.append(preview)
+            if len(previews) == 1:
+                publisher.update_packet(
+                    module.DetectionPacket(
+                        frame_pair=module.FramePair(
+                            frames=(module.CapturedFrame(0, FakeFrame("after"), 1.11, 3),),
+                            pair_timestamp=1.11,
+                            skew_ms=0.0,
+                        ),
+                        boxes_by_camera=((),),
+                        inference_ms_by_camera=(1.0,),
+                    )
+                )
+                return
+            stop_event.set()
+
+        publisher = module.LivePreviewPublisher(
+            [FakeReader()],
+            capture_preview,
+            anchor_axis="x",
+            anchor_line_ratio=0.5,
+            preview_fps=60.0,
+            overlay_target_fps=30.0,
+            stop_event=stop_event,
+            compose_preview_fn=lambda frames: frames,
+            draw_boxes_fn=fake_draw_boxes,
+            draw_anchor_line_fn=lambda frame, _axis, _ratio: frame,
+            actuation_snapshot_hold_ms=450.0,
+            sleep_fn=lambda _seconds: None,
+        )
+        publisher.update_packet(
+            module.DetectionPacket(
+                frame_pair=module.FramePair(
+                    frames=(module.CapturedFrame(0, FakeFrame("actuation"), 1.10, 2),),
+                    pair_timestamp=1.10,
+                    skew_ms=0.0,
+                ),
+                boxes_by_camera=(((28.0, 10.0, 36.0, 20.0, 0.90, 1),),),
+                inference_ms_by_camera=(1.0,),
+            )
+        )
+
+        publisher._run()
+
+        self.assertEqual(2, len(previews))
+        self.assertEqual("actuation", drawn_boxes[0][0])
+        self.assertEqual("actuation", drawn_boxes[1][0])
+        self.assertEqual(drawn_boxes[0][1], drawn_boxes[1][1])
+
     def test_latest_frame_reader_continues_capture_while_caller_waits(self) -> None:
         module = load_module("cap_line_runtime_v3")
 
@@ -486,6 +591,7 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
             tracked_cap,
             config=module.RuntimeConfig.defaults(),
             decision_ready_time=1.2,
+            camera_count=1,
         )
 
         self.assertIsNotNone(decision)
@@ -523,6 +629,88 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
         self.assertIsNone(decision.final_score)
         self.assertEqual("no_actuation_crossing", decision.decision_source)
         self.assertIsNone(decision.review_reason)
+
+    def test_defect_that_skips_over_actuation_line_between_frames_can_trigger(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+        tracked_cap = module.TrackedCap(event_id=1, created_at=1.0, last_seen_at=1.0)
+        tracked_cap.add_observation(
+            module.TrackObservation(
+                camera_index=0,
+                box=(15.0, 10.0, 40.0, 20.0, 0.90, 1),
+                timestamp=1.0,
+                frame_size=(100, 40),
+                at_actuation_line=False,
+            )
+        )
+        tracked_cap.add_observation(
+            module.TrackObservation(
+                camera_index=0,
+                box=(60.0, 10.0, 85.0, 20.0, 0.91, 1),
+                timestamp=1.1,
+                frame_size=(100, 40),
+                at_actuation_line=False,
+            )
+        )
+
+        decision = module.decide_decision_ready(
+            tracked_cap,
+            config=module.RuntimeConfig.defaults(),
+            decision_ready_time=1.2,
+            camera_count=1,
+        )
+
+        self.assertIsNotNone(decision)
+        self.assertEqual("trigger", decision.result)
+        self.assertAlmostEqual(0.91, decision.final_score)
+
+    def test_tracked_cap_manager_keeps_back_to_back_caps_separate(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+        manager = module.TrackedCapManager(
+            camera_count=2,
+            merge_window_seconds=0.15,
+            finalize_quiet_seconds=0.50,
+            anchor_axis="x",
+            anchor_line_ratio=0.5,
+        )
+
+        manager.update(
+            [
+                module.TrackObservation(
+                    camera_index=0,
+                    box=(15.0, 10.0, 40.0, 20.0, 0.90, 1),
+                    timestamp=1.0,
+                    frame_size=(100, 40),
+                    at_actuation_line=False,
+                )
+            ]
+        )
+        manager.update(
+            [
+                module.TrackObservation(
+                    camera_index=0,
+                    box=(60.0, 10.0, 85.0, 20.0, 0.91, 1),
+                    timestamp=1.1,
+                    frame_size=(100, 40),
+                    at_actuation_line=False,
+                )
+            ]
+        )
+        manager.update(
+            [
+                module.TrackObservation(
+                    camera_index=0,
+                    box=(12.0, 10.0, 37.0, 20.0, 0.89, 1),
+                    timestamp=1.2,
+                    frame_size=(100, 40),
+                    at_actuation_line=False,
+                )
+            ]
+        )
+
+        open_caps = manager.open_caps()
+
+        self.assertEqual(2, len(open_caps))
+        self.assertEqual([1, 2], [cap.event_id for cap in open_caps])
 
     def test_dirty_before_line_but_clean_at_actuation_is_clean_skip(self) -> None:
         module = load_module("cap_line_runtime_v3")

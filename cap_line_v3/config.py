@@ -30,6 +30,7 @@ DEFAULT_FINALIZE_QUIET_MS = 30.0
 DEFAULT_LATENCY_COMPENSATION_MS = 50.0
 DEFAULT_PREVIEW_LATENCY_COMPENSATION_MS = 0.0
 DEFAULT_LIVE_PREVIEW_FPS = 30.0
+DEFAULT_ACTUATION_SNAPSHOT_HOLD_MS = 450.0
 DEFAULT_SAVE_QUEUE_WARNING_THRESHOLD = 25
 
 
@@ -60,6 +61,7 @@ class RuntimeConfig:
     trigger_offset_s: float = DEFAULT_TRIGGER_OFFSET_S
     latency_compensation_ms: float = DEFAULT_LATENCY_COMPENSATION_MS
     preview_latency_compensation_ms: float = DEFAULT_PREVIEW_LATENCY_COMPENSATION_MS
+    actuation_snapshot_hold_ms: float = DEFAULT_ACTUATION_SNAPSHOT_HOLD_MS
     serial_inference: bool = False
     onnx_intra_op_threads: int = DEFAULT_ONNX_INTRA_OP_THREADS
     perf_log_interval_s: float = DEFAULT_PERF_LOG_INTERVAL_S
@@ -133,6 +135,8 @@ def validate_config(config: RuntimeConfig) -> None:
         raise ValueError("latency_compensation_ms must be 0 or greater")
     if config.preview_latency_compensation_ms < 0:
         raise ValueError("preview_latency_compensation_ms must be 0 or greater")
+    if config.actuation_snapshot_hold_ms < 0:
+        raise ValueError("actuation_snapshot_hold_ms must be 0 or greater")
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -165,6 +169,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--trigger-offset-s", type=float, default=defaults.trigger_offset_s)
     parser.add_argument("--latency-compensation-ms", type=float, default=defaults.latency_compensation_ms)
     parser.add_argument("--preview-latency-compensation-ms", type=float, default=defaults.preview_latency_compensation_ms)
+    parser.add_argument("--actuation-snapshot-hold-ms", type=float, default=defaults.actuation_snapshot_hold_ms)
     parser.add_argument("--serial-inference", action="store_true", default=defaults.serial_inference)
     parser.add_argument("--onnx-intra-op-threads", type=int, default=defaults.onnx_intra_op_threads)
     parser.add_argument("--perf-log-interval-s", type=float, default=defaults.perf_log_interval_s)
@@ -208,6 +213,7 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         trigger_offset_s=float(args.trigger_offset_s),
         latency_compensation_ms=float(args.latency_compensation_ms),
         preview_latency_compensation_ms=float(args.preview_latency_compensation_ms),
+        actuation_snapshot_hold_ms=float(args.actuation_snapshot_hold_ms),
         serial_inference=bool(args.serial_inference),
         onnx_intra_op_threads=int(args.onnx_intra_op_threads),
         perf_log_interval_s=float(args.perf_log_interval_s),
