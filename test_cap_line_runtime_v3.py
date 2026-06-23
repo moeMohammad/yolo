@@ -636,6 +636,48 @@ class CapLineRuntimeV3Tests(unittest.TestCase):
         self.assertTrue(any(snapshot.target_fps == 120 for snapshot in performances))
         self.assertTrue(any(snapshot.preview_fps > snapshot.processed_fps for snapshot in performances))
 
+    def test_runtime_fails_fast_when_camera_does_not_open(self) -> None:
+        module = load_module("cap_line_runtime_v3")
+
+        class FakeClosedCamera:
+            def __init__(self):
+                self.released = False
+
+            def isOpened(self):
+                return False
+
+            def release(self):
+                self.released = True
+
+        class FakeOpenCamera:
+            def __init__(self):
+                self.released = False
+
+            def isOpened(self):
+                return True
+
+            def release(self):
+                self.released = True
+
+        cameras = [FakeClosedCamera(), FakeOpenCamera()]
+        config = module.replace(
+            module.RuntimeConfig.defaults(),
+            cameras=("bad0", "bad1"),
+            simulate_gpio=True,
+            no_display=True,
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "camera 0.*bad0"):
+            module.run_detection(
+                config,
+                module.RuntimeCallbacks(log_fn=lambda *_args, **_kwargs: None),
+                camera_factory=lambda camera_index, _source, _config: cameras[camera_index],
+                session_factory=lambda *_args, **_kwargs: None,
+            )
+
+        self.assertTrue(cameras[0].released)
+        self.assertTrue(cameras[1].released)
+
     def test_trigger_runtime_writes_v3_debug_artifact(self) -> None:
         module = load_module("cap_line_runtime_v3")
 

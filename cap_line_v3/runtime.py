@@ -142,6 +142,36 @@ def open_cam(source: str | int, width: int, height: int, fps: int, pixel_format:
     return camera
 
 
+def _camera_is_open(camera) -> bool:
+    is_opened = getattr(camera, "isOpened", None)
+    if is_opened is None:
+        return True
+    try:
+        return bool(is_opened())
+    except Exception:
+        return False
+
+
+def validate_opened_cameras(
+    cameras: list[object],
+    camera_sources: list[str | int],
+    device_paths: list[str],
+) -> None:
+    failed = []
+    for index, camera in enumerate(cameras):
+        if _camera_is_open(camera):
+            continue
+        source = camera_sources[index] if index < len(camera_sources) else "unknown"
+        device_path = device_paths[index] if index < len(device_paths) else "unknown"
+        failed.append(f"camera {index} source={source!r} device={device_path!r}")
+    if failed:
+        raise RuntimeError(
+            "Unable to open V3 camera(s): "
+            + "; ".join(failed)
+            + ". Check --cams/UI camera settings, cable/power, permissions, and v4l2-ctl --list-devices."
+        )
+
+
 def create_onnx_session(model_path: str, intra_op_threads: int):
     import onnxruntime as ort
 
@@ -719,6 +749,13 @@ def run_detection(
         lambda _index, source, cfg: open_cam(source, cfg.resolution[0], cfg.resolution[1], cfg.target_fps, cfg.pixel_format)
     )
     cameras = [active_camera_factory(index, source, config) for index, source in enumerate(camera_sources)]
+    try:
+        validate_opened_cameras(cameras, camera_sources, device_paths)
+    except Exception:
+        for camera in cameras:
+            if hasattr(camera, "release"):
+                camera.release()
+        raise
     readers = [
         LatestFrameCameraReader(
             camera,
