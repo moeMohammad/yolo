@@ -102,6 +102,16 @@ class GPIOOutputPinTests(unittest.TestCase):
         self.assertEqual(7, parser.parse_args([]).pin)
         self.assertIn("GPIO09", action.help)
 
+    def test_manual_air_pressure_defaults_to_gpio09_board_pin(self) -> None:
+        module = load_module("manual_air_pressure")
+        parser = module.build_parser()
+
+        action = parser._option_string_actions["--pin"]
+
+        self.assertEqual(7, module.GPIO09)
+        self.assertEqual(7, parser.parse_args([]).pin)
+        self.assertIn("GPIO09", action.help)
+
     def test_reject_scheduler_exposes_pin_backend_name(self) -> None:
         module = load_module("cap_line_runtime")
 
