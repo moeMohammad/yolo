@@ -59,7 +59,7 @@ class RejectScheduler:
         self.sleep_fn = sleep_fn
         self.pin = pin_factory(trigger_pin)
         self.backend_name = getattr(self.pin, "backend_name", type(self.pin).__name__)
-        self._queue: list[tuple[float, int, int, Callable[[RejectExecution], None] | None]] = []
+        self._queue: list[tuple[float, int, int, float, Callable[[RejectExecution], None] | None]] = []
         self._counter = count()
         self._closed = False
         self._condition = threading.Condition()
@@ -78,7 +78,7 @@ class RejectScheduler:
         with self._condition:
             heapq.heappush(
                 self._queue,
-                (float(requested_fire_time), next(self._counter), int(event_id), completion_callback),
+                (float(requested_fire_time), next(self._counter), int(event_id), queued_at, completion_callback),
             )
             queue_depth = len(self._queue)
             self._condition.notify()
@@ -91,14 +91,20 @@ class RejectScheduler:
                     self._condition.wait(0.05)
                 if self._closed and not self._queue:
                     return
-                requested_fire_time, _order, event_id, callback = heapq.heappop(self._queue)
+                requested_fire_time, _order, event_id, queued_at, callback = heapq.heappop(self._queue)
             if self._last_fire_time is not None:
                 requested_fire_time = max(requested_fire_time, self._last_fire_time + self.trigger_min_gap)
+            cancelled = False
             while True:
                 now = float(self.time_fn())
-                if now >= requested_fire_time or self._closed:
+                if now >= requested_fire_time:
+                    break
+                if self._closed:
+                    cancelled = True
                     break
                 self.sleep_fn(min(0.01, requested_fire_time - now))
+            if cancelled:
+                continue
             trigger_on = float(self.time_fn())
             self.pin.on()
             self.sleep_fn(self.trigger_duration)
@@ -109,7 +115,7 @@ class RejectScheduler:
                 callback(
                     RejectExecution(
                         event_id=event_id,
-                        queued_at=trigger_on,
+                        queued_at=queued_at,
                         requested_fire_time=requested_fire_time,
                         trigger_on_time=trigger_on,
                         trigger_off_time=trigger_off,

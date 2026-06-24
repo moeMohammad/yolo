@@ -36,10 +36,52 @@ class FramePair:
 
 
 @dataclass(frozen=True)
+class CaptureBatch:
+    frames_by_camera: tuple[CapturedFrame | None, ...]
+    batch_timestamp: float
+    skew_ms: float | None
+    reason: str
+    missing_camera_indices: tuple[int, ...] = ()
+
+    @property
+    def frames(self) -> tuple[CapturedFrame, ...]:
+        return tuple(frame for frame in self.frames_by_camera if frame is not None)
+
+    @property
+    def sequences(self) -> tuple[int | None, ...]:
+        return tuple(None if frame is None else int(frame.sequence) for frame in self.frames_by_camera)
+
+    @property
+    def timestamps(self) -> tuple[float | None, ...]:
+        return tuple(None if frame is None else float(frame.timestamp) for frame in self.frames_by_camera)
+
+    @property
+    def is_single_camera(self) -> bool:
+        return len(self.frames) == 1
+
+
+@dataclass(frozen=True)
 class DetectionPacket:
     frame_pair: FramePair
     boxes_by_camera: tuple[tuple[Box, ...], ...]
     inference_ms_by_camera: tuple[float, ...]
+    capture_batch: CaptureBatch | None = None
+
+
+@dataclass
+class PairDropStats:
+    stale_sequence: int = 0
+    skew: int = 0
+    missing_camera: int = 0
+    overwritten: int = 0
+
+    def copy(self) -> "PairDropStats":
+        return PairDropStats(
+            stale_sequence=int(self.stale_sequence),
+            skew=int(self.skew),
+            missing_camera=int(self.missing_camera),
+            overwritten=int(self.overwritten),
+        )
 
 
 @dataclass(frozen=True)
@@ -134,6 +176,11 @@ class RuntimePerformanceSnapshot:
     latest_pair_skew_ms: float | None
     dropped_pairs: int
     overlay_age_ms: float | None
+    latest_inference_ms_by_camera: tuple[float | None, ...] = ()
+    latest_total_inference_ms: float | None = None
+    single_camera_batches: int = 0
+    pair_drop_stats: PairDropStats = field(default_factory=PairDropStats)
+    actual_camera_fps_by_camera: tuple[float | None, ...] = ()
 
 
 @dataclass(frozen=True)

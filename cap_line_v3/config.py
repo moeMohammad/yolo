@@ -34,6 +34,10 @@ DEFAULT_LIVE_PREVIEW_FPS = 30.0
 DEFAULT_ANCHOR_LINE_RATIO = 0.75
 DEFAULT_ACTUATION_SNAPSHOT_HOLD_MS = 450.0
 DEFAULT_SAVE_QUEUE_WARNING_THRESHOLD = 25
+DEFAULT_CAPTURE_BUFFER_FRAMES = 8
+DEFAULT_DECISION_DEADLINE_GUARD_MS = 25.0
+DEFAULT_ACTUATION_WINDOW_MS = 100.0
+DEFAULT_ACTUATION_PREDICTION_HORIZON_MS = 120.0
 
 
 @dataclass(frozen=True)
@@ -70,6 +74,12 @@ class RuntimeConfig:
     perf_log_interval_s: float = DEFAULT_PERF_LOG_INTERVAL_S
     live_preview_fps: float = DEFAULT_LIVE_PREVIEW_FPS
     pair_max_skew_ms: float = DEFAULT_PAIR_MAX_SKEW_MS
+    capture_buffer_frames: int = DEFAULT_CAPTURE_BUFFER_FRAMES
+    single_camera_wait_ms: float | None = None
+    decision_deadline_guard_ms: float = DEFAULT_DECISION_DEADLINE_GUARD_MS
+    actuation_window_ms: float = DEFAULT_ACTUATION_WINDOW_MS
+    actuation_prediction_horizon_ms: float = DEFAULT_ACTUATION_PREDICTION_HORIZON_MS
+    log_skip_events: bool = True
     debug_burst_before_frames: int = DEFAULT_DEBUG_BURST_BEFORE_FRAMES
     debug_burst_after_frames: int = DEFAULT_DEBUG_BURST_AFTER_FRAMES
     timing_log_dir: str = str(SCRIPT_DIR / "data" / "timing_logs_v3")
@@ -126,6 +136,7 @@ def validate_config(config: RuntimeConfig) -> None:
         ("tracking_threshold", config.tracking_threshold),
         ("reject_threshold", config.reject_threshold),
         ("anchor_line_ratio", config.anchor_line_ratio),
+        ("track_iou", config.track_iou),
     ):
         if not 0.0 <= float(value) <= 1.0:
             raise ValueError(f"{name} must be between 0 and 1")
@@ -135,8 +146,19 @@ def validate_config(config: RuntimeConfig) -> None:
         raise ValueError("trigger_min_gap must be 0 or greater")
     if config.max_missing_frames < 0:
         raise ValueError("max_missing_frames must be 0 or greater")
+    if config.capture_buffer_frames < 1:
+        raise ValueError("capture_buffer_frames must be at least 1")
     if config.merge_window_ms < 0 or config.finalize_quiet_ms < 0:
         raise ValueError("merge/finalize windows must be 0 or greater")
+    if config.single_camera_wait_ms is not None and config.single_camera_wait_ms < 0:
+        raise ValueError("single_camera_wait_ms must be 0 or greater")
+    for name, value in (
+        ("decision_deadline_guard_ms", config.decision_deadline_guard_ms),
+        ("actuation_window_ms", config.actuation_window_ms),
+        ("actuation_prediction_horizon_ms", config.actuation_prediction_horizon_ms),
+    ):
+        if value < 0:
+            raise ValueError(f"{name} must be 0 or greater")
     if config.timing_camera not in (0, 1):
         raise ValueError("timing_camera must be 0 or 1")
     if config.anchor_axis not in {"x", "y"}:
@@ -189,6 +211,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--perf-log-interval-s", type=float, default=defaults.perf_log_interval_s)
     parser.add_argument("--live-preview-fps", type=float, default=defaults.live_preview_fps)
     parser.add_argument("--pair-max-skew-ms", type=float, default=defaults.pair_max_skew_ms)
+    parser.add_argument("--capture-buffer-frames", type=int, default=defaults.capture_buffer_frames)
+    parser.add_argument("--single-camera-wait-ms", type=float, default=defaults.single_camera_wait_ms)
+    parser.add_argument("--decision-deadline-guard-ms", type=float, default=defaults.decision_deadline_guard_ms)
+    parser.add_argument("--actuation-window-ms", type=float, default=defaults.actuation_window_ms)
+    parser.add_argument("--actuation-prediction-horizon-ms", type=float, default=defaults.actuation_prediction_horizon_ms)
+    parser.add_argument("--log-skip-events", action=argparse.BooleanOptionalAction, default=defaults.log_skip_events)
     parser.add_argument("--debug-burst-before-frames", type=int, default=defaults.debug_burst_before_frames)
     parser.add_argument("--debug-burst-after-frames", type=int, default=defaults.debug_burst_after_frames)
     parser.add_argument("--timing-log-dir", default=defaults.timing_log_dir)
@@ -234,6 +262,12 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         perf_log_interval_s=float(args.perf_log_interval_s),
         live_preview_fps=float(args.live_preview_fps),
         pair_max_skew_ms=float(args.pair_max_skew_ms),
+        capture_buffer_frames=int(args.capture_buffer_frames),
+        single_camera_wait_ms=None if args.single_camera_wait_ms is None else float(args.single_camera_wait_ms),
+        decision_deadline_guard_ms=float(args.decision_deadline_guard_ms),
+        actuation_window_ms=float(args.actuation_window_ms),
+        actuation_prediction_horizon_ms=float(args.actuation_prediction_horizon_ms),
+        log_skip_events=bool(args.log_skip_events),
         debug_burst_before_frames=int(args.debug_burst_before_frames),
         debug_burst_after_frames=int(args.debug_burst_after_frames),
         timing_log_dir=str(args.timing_log_dir),

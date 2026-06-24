@@ -36,7 +36,11 @@ CONFIG_FIELD_LABELS = (
     "Exposure",
     "Tracking Threshold",
     "Reject Threshold",
+    "Track IOU",
+    "Max Missing Frames",
     "Pair Max Skew ms",
+    "Capture Buffer Frames",
+    "Single Camera Wait ms",
     TRIGGER_PIN_LABEL,
     "Trigger Duration",
     "Trigger Min Gap",
@@ -49,6 +53,9 @@ CONFIG_FIELD_LABELS = (
     "Trigger Offset s",
     "Latency Compensation ms",
     "Preview Lead ms",
+    "Decision Deadline Guard ms",
+    "Actuation Window ms",
+    "Prediction Horizon ms",
     "Timing Log Dir",
     "Debug Dir",
     "Pictures Dir",
@@ -395,7 +402,18 @@ if PYQT_AVAILABLE:
             side_layout.addLayout(row)
             metrics = QGroupBox("Session")
             metrics_layout = QGridLayout(metrics)
-            for index, key in enumerate(("target_fps", "processed_fps", "preview_fps", "pair_skew", "dropped_pairs", "overlay_age")):
+            for index, key in enumerate((
+                "target_fps",
+                "processed_fps",
+                "preview_fps",
+                "capture_fps",
+                "actual_fps",
+                "inference_ms",
+                "pair_skew",
+                "single_camera_batches",
+                "dropped_pairs",
+                "overlay_age",
+            )):
                 title = QLabel(key.replace("_", " ").title())
                 value = QLabel("-")
                 self.metric_labels[key] = value
@@ -421,7 +439,11 @@ if PYQT_AVAILABLE:
             self.exposure_spin = QSpinBox(); self.exposure_spin.setRange(1, 10000)
             self.tracking_threshold_spin = QDoubleSpinBox(); self.tracking_threshold_spin.setRange(0, 1); self.tracking_threshold_spin.setDecimals(3)
             self.reject_threshold_spin = QDoubleSpinBox(); self.reject_threshold_spin.setRange(0, 1); self.reject_threshold_spin.setDecimals(3)
+            self.track_iou_spin = QDoubleSpinBox(); self.track_iou_spin.setRange(0, 1); self.track_iou_spin.setDecimals(3)
+            self.max_missing_spin = QSpinBox(); self.max_missing_spin.setRange(0, 20)
             self.pair_skew_spin = QDoubleSpinBox(); self.pair_skew_spin.setRange(0, 1000); self.pair_skew_spin.setDecimals(1)
+            self.capture_buffer_spin = QSpinBox(); self.capture_buffer_spin.setRange(1, 240)
+            self.single_camera_wait_spin = QDoubleSpinBox(); self.single_camera_wait_spin.setRange(0, 1000); self.single_camera_wait_spin.setDecimals(1)
             self.trigger_pin_input = QLineEdit()
             self.trigger_duration_spin = QDoubleSpinBox(); self.trigger_duration_spin.setRange(0.01, 10); self.trigger_duration_spin.setDecimals(3)
             self.trigger_gap_spin = QDoubleSpinBox(); self.trigger_gap_spin.setRange(0, 10); self.trigger_gap_spin.setDecimals(3)
@@ -434,6 +456,9 @@ if PYQT_AVAILABLE:
             self.trigger_offset_spin = QDoubleSpinBox(); self.trigger_offset_spin.setRange(-5, 5); self.trigger_offset_spin.setDecimals(3)
             self.latency_compensation_spin = QDoubleSpinBox(); self.latency_compensation_spin.setRange(0, 5000); self.latency_compensation_spin.setDecimals(1)
             self.preview_latency_compensation_spin = QDoubleSpinBox(); self.preview_latency_compensation_spin.setRange(0, 5000); self.preview_latency_compensation_spin.setDecimals(1)
+            self.decision_guard_spin = QDoubleSpinBox(); self.decision_guard_spin.setRange(0, 5000); self.decision_guard_spin.setDecimals(1)
+            self.actuation_window_spin = QDoubleSpinBox(); self.actuation_window_spin.setRange(0, 5000); self.actuation_window_spin.setDecimals(1)
+            self.prediction_horizon_spin = QDoubleSpinBox(); self.prediction_horizon_spin.setRange(0, 5000); self.prediction_horizon_spin.setDecimals(1)
             self.timing_log_dir_input = QLineEdit()
             self.debug_dir_input = QLineEdit()
             self.pictures_dir_input = QLineEdit()
@@ -450,7 +475,11 @@ if PYQT_AVAILABLE:
                 ("Exposure", self.exposure_spin),
                 ("Tracking Threshold", self.tracking_threshold_spin),
                 ("Reject Threshold", self.reject_threshold_spin),
+                ("Track IOU", self.track_iou_spin),
+                ("Max Missing Frames", self.max_missing_spin),
                 ("Pair Max Skew ms", self.pair_skew_spin),
+                ("Capture Buffer Frames", self.capture_buffer_spin),
+                ("Single Camera Wait ms (0=auto)", self.single_camera_wait_spin),
                 (TRIGGER_PIN_LABEL, self.trigger_pin_input),
                 ("Trigger Duration", self.trigger_duration_spin),
                 ("Trigger Min Gap", self.trigger_gap_spin),
@@ -463,6 +492,9 @@ if PYQT_AVAILABLE:
                 ("Trigger Offset s", self.trigger_offset_spin),
                 ("Latency Compensation ms", self.latency_compensation_spin),
                 ("Preview Lead ms", self.preview_latency_compensation_spin),
+                ("Decision Deadline Guard ms", self.decision_guard_spin),
+                ("Actuation Window ms", self.actuation_window_spin),
+                ("Prediction Horizon ms", self.prediction_horizon_spin),
                 ("Timing Log Dir", self.timing_log_dir_input),
                 ("Debug Dir", self.debug_dir_input),
                 ("Pictures Dir", self.pictures_dir_input),
@@ -496,7 +528,11 @@ if PYQT_AVAILABLE:
             self.exposure_spin.setValue(config.exposure)
             self.tracking_threshold_spin.setValue(config.tracking_threshold)
             self.reject_threshold_spin.setValue(config.reject_threshold)
+            self.track_iou_spin.setValue(config.track_iou)
+            self.max_missing_spin.setValue(config.max_missing_frames)
             self.pair_skew_spin.setValue(config.pair_max_skew_ms)
+            self.capture_buffer_spin.setValue(config.capture_buffer_frames)
+            self.single_camera_wait_spin.setValue(0.0 if config.single_camera_wait_ms is None else config.single_camera_wait_ms)
             self.trigger_pin_input.setText(str(config.trigger_pin))
             self.trigger_duration_spin.setValue(config.trigger_duration)
             self.trigger_gap_spin.setValue(config.trigger_min_gap)
@@ -509,6 +545,9 @@ if PYQT_AVAILABLE:
             self.trigger_offset_spin.setValue(config.trigger_offset_s)
             self.latency_compensation_spin.setValue(config.latency_compensation_ms)
             self.preview_latency_compensation_spin.setValue(config.preview_latency_compensation_ms)
+            self.decision_guard_spin.setValue(config.decision_deadline_guard_ms)
+            self.actuation_window_spin.setValue(config.actuation_window_ms)
+            self.prediction_horizon_spin.setValue(config.actuation_prediction_horizon_ms)
             self.timing_log_dir_input.setText(config.timing_log_dir)
             self.debug_dir_input.setText(config.debug_dir)
             self.pictures_dir_input.setText(config.pictures_dir)
@@ -527,7 +566,15 @@ if PYQT_AVAILABLE:
                 exposure=self.exposure_spin.value(),
                 tracking_threshold=self.tracking_threshold_spin.value(),
                 reject_threshold=self.reject_threshold_spin.value(),
+                track_iou=self.track_iou_spin.value(),
+                max_missing_frames=self.max_missing_spin.value(),
                 pair_max_skew_ms=self.pair_skew_spin.value(),
+                capture_buffer_frames=self.capture_buffer_spin.value(),
+                single_camera_wait_ms=(
+                    None
+                    if self.single_camera_wait_spin.value() <= 0.0
+                    else self.single_camera_wait_spin.value()
+                ),
                 trigger_pin=self.trigger_pin_input.text().strip() or RuntimeConfig.defaults().trigger_pin,
                 trigger_duration=self.trigger_duration_spin.value(),
                 trigger_min_gap=self.trigger_gap_spin.value(),
@@ -540,6 +587,9 @@ if PYQT_AVAILABLE:
                 trigger_offset_s=self.trigger_offset_spin.value(),
                 latency_compensation_ms=self.latency_compensation_spin.value(),
                 preview_latency_compensation_ms=self.preview_latency_compensation_spin.value(),
+                decision_deadline_guard_ms=self.decision_guard_spin.value(),
+                actuation_window_ms=self.actuation_window_spin.value(),
+                actuation_prediction_horizon_ms=self.prediction_horizon_spin.value(),
                 timing_log_dir=self.timing_log_dir_input.text().strip() or RuntimeConfig.defaults().timing_log_dir,
                 debug_dir=self.debug_dir_input.text().strip() or RuntimeConfig.defaults().debug_dir,
                 pictures_dir=self.pictures_dir_input.text().strip() or RuntimeConfig.defaults().pictures_dir,
@@ -603,7 +653,11 @@ if PYQT_AVAILABLE:
             self.metric_labels["target_fps"].setText(str(snapshot.target_fps))
             self.metric_labels["processed_fps"].setText(f"{snapshot.processed_fps:.1f}")
             self.metric_labels["preview_fps"].setText(f"{snapshot.preview_fps:.1f}")
+            self.metric_labels["capture_fps"].setText(",".join("-" if value is None else f"{float(value):.1f}" for value in snapshot.capture_fps_by_camera))
+            self.metric_labels["actual_fps"].setText(",".join("-" if value is None else f"{float(value):.1f}" for value in snapshot.actual_camera_fps_by_camera))
+            self.metric_labels["inference_ms"].setText(",".join("-" if value is None else f"{float(value):.1f}" for value in snapshot.latest_inference_ms_by_camera))
             self.metric_labels["pair_skew"].setText("-" if snapshot.latest_pair_skew_ms is None else f"{snapshot.latest_pair_skew_ms:.1f} ms")
+            self.metric_labels["single_camera_batches"].setText(str(snapshot.single_camera_batches))
             self.metric_labels["dropped_pairs"].setText(str(snapshot.dropped_pairs))
             self.metric_labels["overlay_age"].setText("-" if snapshot.overlay_age_ms is None else f"{snapshot.overlay_age_ms:.1f} ms")
 

@@ -7,6 +7,7 @@ import os
 import subprocess
 import threading
 import time
+from collections import deque
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -15,15 +16,17 @@ from gpio_output import GPIOOutputPin
 
 from .actuation import NullGPIOOutputPin, RejectScheduler
 from .config import DEFAULT_MODEL, RuntimeConfig, validate_config
-from .decision import TrackedCapManager, decide_decision_ready
+from .decision import TrackedCapManager, decide_decision_ready, decide_tracked_cap
 from .geometry import box_spans_line_coordinate, class_name, frame_line_coordinate
-from .pairing import select_synchronized_frame_pair
+from .pairing import default_single_camera_wait_ms, select_capture_batch
 from .preview import CameraPreviewView, resolve_preview_views
 from .types import (
     Box,
     CapturedFrame,
     DetectionHistoryRecord,
     DetectionPacket,
+    FramePair,
+    PairDropStats,
     RuntimeCallbacks,
     RuntimePerformanceSnapshot,
     TimingLogRecord,
@@ -35,6 +38,7 @@ MODEL_SEARCH_DIRS = (Path(__file__).resolve().parent.parent, Path(__file__).reso
 CAP_PROP_FRAME_WIDTH = 3
 CAP_PROP_FRAME_HEIGHT = 4
 CAP_PROP_FPS = 5
+CAP_PROP_BUFFERSIZE = 38
 MIN_CAP_FINALIZE_QUIET_S = 0.50
 
 
@@ -116,7 +120,13 @@ def set_camera_format(
         f"--set-parm={int(fps)}",
     ]
     try:
-        subprocess.run(command, check=False, capture_output=True, text=True)
+        result = subprocess.run(command, check=False, capture_output=True, text=True)
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            log_fn(
+                f"[CAMERA][WARN] format command failed for {device_path} "
+                f"rc={result.returncode}: {detail}"
+            )
     except OSError as exc:
         log_fn(f"[CAMERA][WARN] unable to set format for {device_path}: {exc}")
 
@@ -126,7 +136,13 @@ def set_camera_controls(device_path: str, exposure: int, *, log_fn: Callable[...
         return
     command = ["v4l2-ctl", "-d", str(device_path), f"--set-ctrl=exposure_time_absolute={int(exposure)}"]
     try:
-        subprocess.run(command, check=False, capture_output=True, text=True)
+        result = subprocess.run(command, check=False, capture_output=True, text=True)
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            log_fn(
+                f"[CAMERA][WARN] exposure command failed for {device_path} "
+                f"rc={result.returncode}: {detail}"
+            )
     except OSError as exc:
         log_fn(f"[CAMERA][WARN] unable to set exposure for {device_path}: {exc}")
 
@@ -138,6 +154,10 @@ def open_cam(source: str | int, width: int, height: int, fps: int, pixel_format:
     camera.set(CAP_PROP_FRAME_WIDTH, width)
     camera.set(CAP_PROP_FRAME_HEIGHT, height)
     camera.set(CAP_PROP_FPS, fps)
+    try:
+        camera.set(CAP_PROP_BUFFERSIZE, 1)
+    except Exception:
+        pass
     if hasattr(cv2, "VideoWriter_fourcc"):
         camera.set(6, cv2.VideoWriter_fourcc(*pixel_format))
     return camera
@@ -171,6 +191,64 @@ def validate_opened_cameras(
             + "; ".join(failed)
             + ". Check --cams/UI camera settings, cable/power, permissions, and v4l2-ctl --list-devices."
         )
+
+
+def _camera_get(camera, prop_id: int) -> float | None:
+    get = getattr(camera, "get", None)
+    if get is None:
+        return None
+    try:
+        value = float(get(prop_id))
+    except Exception:
+        return None
+    return value
+
+
+def collect_camera_properties(cameras: list[object], device_paths: list[str], config: RuntimeConfig) -> list[dict[str, object]]:
+    properties = []
+    for index, camera in enumerate(cameras):
+        properties.append(
+            {
+                "camera_index": index,
+                "device_path": device_paths[index] if index < len(device_paths) else None,
+                "requested_width": int(config.resolution[0]),
+                "requested_height": int(config.resolution[1]),
+                "requested_fps": int(config.target_fps),
+                "requested_pixel_format": config.pixel_format,
+                "actual_width": _camera_get(camera, CAP_PROP_FRAME_WIDTH),
+                "actual_height": _camera_get(camera, CAP_PROP_FRAME_HEIGHT),
+                "actual_fps": _camera_get(camera, CAP_PROP_FPS),
+                "actual_buffer_size": _camera_get(camera, CAP_PROP_BUFFERSIZE),
+            }
+        )
+    return properties
+
+
+def _write_session_start_log(
+    config: RuntimeConfig,
+    *,
+    clock: Clock,
+    model_path: str,
+    model_imgsz: int,
+    camera_properties: list[dict[str, object]],
+    log_fn: Callable[..., None],
+) -> None:
+    if not config.session_log_dir:
+        return
+    try:
+        os.makedirs(config.session_log_dir, exist_ok=True)
+        label = clock.format().replace(":", "").replace("-", "")
+        path = Path(config.session_log_dir) / f"session_{label}.json"
+        payload = {
+            "started_at": clock.format(),
+            "model_path": model_path,
+            "model_imgsz": int(model_imgsz),
+            "config": config.to_json_dict(),
+            "camera_properties": camera_properties,
+        }
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    except Exception as exc:
+        log_fn(f"[SESSION][WARN] unable to write session log: {exc}")
 
 
 def create_onnx_session(model_path: str, intra_op_threads: int):
@@ -397,7 +475,7 @@ class DirectCameraReader:
 
 
 class LatestFrameCameraReader:
-    """Continuously drain one camera and expose only its freshest frame."""
+    """Continuously drain one camera and keep a bounded app-level frame buffer."""
 
     def __init__(
         self,
@@ -405,6 +483,7 @@ class LatestFrameCameraReader:
         camera_index: int,
         *,
         target_fps: int | float | None,
+        capture_buffer_frames: int = 8,
         mirror_horizontal: bool = False,
         time_fn: Callable[[], float] = time.monotonic,
         sleep_fn: Callable[[float], None] = time.sleep,
@@ -412,13 +491,16 @@ class LatestFrameCameraReader:
         self.camera = camera
         self.camera_index = int(camera_index)
         self.target_fps = None if target_fps is None else float(target_fps)
+        self.capture_buffer_frames = max(1, int(capture_buffer_frames))
         self.mirror_horizontal = bool(mirror_horizontal)
         self.time_fn = time_fn
         self.sleep_fn = sleep_fn
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
         self._latest: CapturedFrame | None = None
+        self._buffer: deque[CapturedFrame] = deque(maxlen=self.capture_buffer_frames)
         self._captured = 0
+        self._overwritten = 0
         self._started = False
         self._thread = threading.Thread(
             target=self._run,
@@ -436,10 +518,20 @@ class LatestFrameCameraReader:
         with self._lock:
             return self._latest
 
+    def pending_after(self, sequence: int | None) -> tuple[CapturedFrame, ...]:
+        previous = 0 if sequence is None else int(sequence)
+        with self._lock:
+            return tuple(frame for frame in self._buffer if int(frame.sequence) > previous)
+
     @property
     def captured(self) -> int:
         with self._lock:
             return int(self._captured)
+
+    @property
+    def overwritten(self) -> int:
+        with self._lock:
+            return int(self._overwritten)
 
     @property
     def sequence(self) -> int:
@@ -463,14 +555,18 @@ class LatestFrameCameraReader:
                 if self.mirror_horizontal:
                     frame = mirror_frame_horizontal(frame)
                 with self._lock:
+                    if len(self._buffer) >= self._buffer.maxlen:
+                        self._overwritten += 1
                     self._captured += 1
-                    self._latest = CapturedFrame(
+                    captured = CapturedFrame(
                         self.camera_index,
                         frame,
                         captured_at,
                         self._captured,
                         (captured_at - started_at) * 1000.0,
                     )
+                    self._latest = captured
+                    self._buffer.append(captured)
             elif not self._stop_event.is_set():
                 self.sleep_fn(0.01)
 
@@ -721,6 +817,17 @@ def _write_debug_artifact(
         "pair_sequences": list(packet.frame_pair.sequences),
         "pair_timestamps": list(packet.frame_pair.timestamps),
         "pair_skew_ms": packet.frame_pair.skew_ms,
+        "capture_batch": (
+            None
+            if packet.capture_batch is None
+            else {
+                "reason": packet.capture_batch.reason,
+                "sequences": list(packet.capture_batch.sequences),
+                "timestamps": list(packet.capture_batch.timestamps),
+                "missing_camera_indices": list(packet.capture_batch.missing_camera_indices),
+                "skew_ms": packet.capture_batch.skew_ms,
+            }
+        ),
         "boxes_by_camera": [
             [[float(value) for value in box] for box in camera_boxes]
             for camera_boxes in packet.boxes_by_camera
@@ -826,6 +933,7 @@ def run_detection(
             camera,
             index,
             target_fps=config.target_fps,
+            capture_buffer_frames=config.capture_buffer_frames,
             mirror_horizontal=config.mirror_cameras[index],
             time_fn=time_fn,
             sleep_fn=sleep_fn,
@@ -862,6 +970,15 @@ def run_detection(
     input_metas = [session.get_inputs()[0] for session in sessions]
     input_names = [meta.name for meta in input_metas]
     model_imgsz = resolve_imgsz(input_metas[0], config.imgsz, preset_imgsz)
+    camera_properties = collect_camera_properties(cameras, device_paths, config)
+    _write_session_start_log(
+        config,
+        clock=clock,
+        model_path=model_path,
+        model_imgsz=model_imgsz,
+        camera_properties=camera_properties,
+        log_fn=log_fn,
+    )
     scheduler = RejectScheduler(
         trigger_pin=config.trigger_pin,
         trigger_duration=config.trigger_duration,
@@ -873,8 +990,15 @@ def run_detection(
     )
     start_time = clock.monotonic()
     frame_count = 0
-    dropped_pairs = 0
-    last_sequences: tuple[int, ...] | None = None
+    last_sequences: tuple[int, ...] = tuple(0 for _ in camera_sources)
+    pair_stats = PairDropStats()
+    last_reader_overwrites = [0 for _ in camera_sources]
+    single_camera_batches = 0
+    configured_single_camera_wait_ms = (
+        default_single_camera_wait_ms(config.target_fps, config.pair_max_skew_ms)
+        if config.single_camera_wait_ms is None
+        else float(config.single_camera_wait_ms)
+    )
     current_packet: DetectionPacket | None = None
     cap_manager = TrackedCapManager(
         camera_count=len(camera_sources),
@@ -888,11 +1012,66 @@ def run_detection(
         ),
         anchor_axis=config.anchor_axis,
         anchor_line_ratio=config.anchor_line_ratio,
+        track_iou=config.track_iou,
+        max_missing_frames=config.max_missing_frames,
+        actuation_window_seconds=float(config.actuation_window_ms) / 1000.0,
     )
     queued_trigger_event_ids: set[int] = set()
     inference_executor: concurrent.futures.ThreadPoolExecutor | None = None
     if not config.serial_inference:
         inference_executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(camera_sources))
+
+    def _drop_count() -> int:
+        return int(
+            pair_stats.stale_sequence
+            + pair_stats.skew
+            + pair_stats.missing_camera
+            + pair_stats.overwritten
+        )
+
+    def _emit_decision(tracked_cap, decision, packet: DetectionPacket | None, *, enqueue_trigger: bool) -> None:
+        history = _record_history(tracked_cap.event_id, decision, clock, config)
+        timing = _timing_record(tracked_cap.event_id, decision, clock)
+        if packet is not None:
+            _write_debug_artifact(
+                config,
+                event_id=tracked_cap.event_id,
+                decision=decision,
+                packet=packet,
+                clock=clock,
+            )
+        if callbacks.history_callback:
+            callbacks.history_callback(history)
+
+        if enqueue_trigger:
+            def _complete_timing(execution, timing_record=timing, trigger_decision=decision) -> None:
+                timing_record.trigger_on_time = clock.format(execution.trigger_on_time)
+                timing_record.trigger_off_time = clock.format(execution.trigger_off_time)
+                timing_record.anchor_to_actual_on_ms = (
+                    float(execution.trigger_on_time) - float(trigger_decision.anchor_time)
+                ) * 1000.0
+                timing_record.scheduler_late_ms = (
+                    float(execution.trigger_on_time) - float(execution.requested_fire_time)
+                ) * 1000.0
+                timing_record.pulse_duration_ms = (
+                    float(execution.trigger_off_time) - float(execution.trigger_on_time)
+                ) * 1000.0
+                _write_timing_record(config, timing_record)
+                if callbacks.timing_log_callback:
+                    callbacks.timing_log_callback(timing_record)
+
+            enqueue_result = scheduler.enqueue(
+                tracked_cap.event_id,
+                decision.requested_fire_time,
+                completion_callback=_complete_timing,
+            )
+            timing.queued_at = clock.format(enqueue_result.queued_at)
+            timing.requested_fire_time = clock.format(enqueue_result.requested_fire_time)
+            return
+
+        _write_timing_record(config, timing)
+        if callbacks.timing_log_callback:
+            callbacks.timing_log_callback(timing)
 
     try:
         if live_preview is not None:
@@ -904,27 +1083,50 @@ def run_detection(
                 f"{config.live_preview_fps:g} fps; camera display is decoupled from inference"
             )
         while stop_event is None or not stop_event.is_set():
-            latest_frames = tuple(reader.latest() for reader in readers)
-            frame_pair = select_synchronized_frame_pair(
-                latest_frames,
-                last_sequences,
-                max_skew_ms=config.pair_max_skew_ms,
+            for index, reader in enumerate(readers):
+                overwritten = reader.overwritten
+                delta = overwritten - last_reader_overwrites[index]
+                if delta > 0:
+                    pair_stats.overwritten += delta
+                    last_reader_overwrites[index] = overwritten
+
+            pending_frames = tuple(
+                reader.pending_after(last_sequences[index])
+                for index, reader in enumerate(readers)
             )
-            if frame_pair is None:
-                dropped_pairs += 1
+            batch = select_capture_batch(
+                pending_frames,
+                now=clock.monotonic(),
+                max_skew_ms=config.pair_max_skew_ms,
+                single_camera_wait_ms=configured_single_camera_wait_ms,
+                stats=pair_stats,
+            )
+            if batch is None:
                 sleep_fn(0.001)
                 if stop_event is not None and stop_event.is_set():
                     break
                 if time_fn() - start_time > 1.0 and camera_factory is not None:
                     break
                 continue
-            last_sequences = frame_pair.sequences
+
+            if batch.is_single_camera:
+                single_camera_batches += 1
+            last_sequence_values = list(last_sequences)
+            for captured in batch.frames:
+                last_sequence_values[int(captured.camera_index)] = int(captured.sequence)
+            last_sequences = tuple(last_sequence_values)
+
+            frame_pair = FramePair(
+                frames=batch.frames,
+                pair_timestamp=batch.batch_timestamp,
+                skew_ms=0.0 if batch.skew_ms is None else float(batch.skew_ms),
+            )
             inference_jobs = [
                 dict(
-                    camera_index=camera_index,
+                    camera_index=int(captured.camera_index),
                     captured=captured,
-                    session=sessions[camera_index],
-                    input_name=input_names[camera_index],
+                    session=sessions[int(captured.camera_index)],
+                    input_name=input_names[int(captured.camera_index)],
                     model_imgsz=model_imgsz,
                     preprocess_fn=active_preprocess,
                     postprocess_fn=active_postprocess,
@@ -933,7 +1135,7 @@ def run_detection(
                     anchor_line_ratio=config.anchor_line_ratio,
                     clock=clock,
                 )
-                for camera_index, captured in enumerate(frame_pair.frames)
+                for captured in batch.frames
             ]
             if inference_executor is None:
                 inference_results = [_run_camera_inference(**job) for job in inference_jobs]
@@ -941,8 +1143,8 @@ def run_detection(
                 futures = [inference_executor.submit(_run_camera_inference, **job) for job in inference_jobs]
                 inference_results = [future.result() for future in futures]
 
-            boxes_by_camera: list[tuple[Box, ...]] = [tuple() for _ in frame_pair.frames]
-            inference_ms: list[float] = [0.0 for _ in frame_pair.frames]
+            boxes_by_camera: list[tuple[Box, ...]] = [tuple() for _ in camera_sources]
+            inference_ms: list[float] = [0.0 for _ in camera_sources]
             observations = []
             for camera_index, boxes, camera_inference_ms, camera_observations in sorted(
                 inference_results,
@@ -951,12 +1153,17 @@ def run_detection(
                 boxes_by_camera[camera_index] = boxes
                 inference_ms[camera_index] = camera_inference_ms
                 observations.extend(camera_observations)
-            packet = DetectionPacket(frame_pair, tuple(boxes_by_camera), tuple(inference_ms))
+            packet = DetectionPacket(
+                frame_pair,
+                tuple(boxes_by_camera),
+                tuple(inference_ms),
+                capture_batch=batch,
+            )
             current_packet = packet
             if live_preview is not None:
                 live_preview.update_packet(packet)
-            if observations:
-                cap_manager.update(observations)
+            observed_camera_indices = {int(captured.camera_index) for captured in batch.frames}
+            cap_manager.update(observations, observed_camera_indices=observed_camera_indices)
 
             decision_ready_time = clock.monotonic()
             for tracked_cap in cap_manager.open_caps():
@@ -970,26 +1177,32 @@ def run_detection(
                 )
                 if decision is not None:
                     queued_trigger_event_ids.add(tracked_cap.event_id)
-                    scheduler.enqueue(tracked_cap.event_id, decision.requested_fire_time)
-                    history = _record_history(tracked_cap.event_id, decision, clock, config)
-                    timing = _timing_record(tracked_cap.event_id, decision, clock)
-                    _write_timing_record(config, timing)
-                    _write_debug_artifact(
-                        config,
-                        event_id=tracked_cap.event_id,
-                        decision=decision,
-                        packet=packet,
-                        clock=clock,
-                    )
-                    if callbacks.history_callback:
-                        callbacks.history_callback(history)
-                    if callbacks.timing_log_callback:
-                        callbacks.timing_log_callback(timing)
-            cap_manager.pop_finalized(decision_ready_time)
+                    _emit_decision(tracked_cap, decision, packet, enqueue_trigger=True)
+
+            for tracked_cap in cap_manager.pop_finalized(decision_ready_time):
+                if tracked_cap.event_id in queued_trigger_event_ids:
+                    continue
+                decision = decide_tracked_cap(
+                    tracked_cap,
+                    config=config,
+                    decision_time=decision_ready_time,
+                    camera_count=len(camera_sources),
+                )
+                if decision.result == "trigger":
+                    queued_trigger_event_ids.add(tracked_cap.event_id)
+                    _emit_decision(tracked_cap, decision, packet, enqueue_trigger=True)
+                elif config.log_skip_events:
+                    _emit_decision(tracked_cap, decision, packet, enqueue_trigger=False)
 
             frame_count += 1
             elapsed = max(0.000001, clock.monotonic() - start_time)
             preview_count = live_preview.published_count if live_preview is not None else 0
+            actual_fps = tuple(
+                None
+                if properties.get("actual_fps") is None
+                else float(properties.get("actual_fps"))
+                for properties in camera_properties
+            )
             snapshot = RuntimePerformanceSnapshot(
                 frame_count=frame_count,
                 target_fps=int(config.target_fps),
@@ -997,19 +1210,27 @@ def run_detection(
                 capture_fps_by_camera=tuple(reader.captured / elapsed for reader in readers),
                 processed_fps=frame_count / elapsed,
                 preview_fps=preview_count / elapsed,
-                latest_pair_skew_ms=frame_pair.skew_ms,
-                dropped_pairs=dropped_pairs,
+                latest_pair_skew_ms=batch.skew_ms,
+                dropped_pairs=_drop_count(),
                 overlay_age_ms=(
                     live_preview.latest_overlay_age_ms
                     if live_preview is not None
                     else ((clock.monotonic() - current_packet.frame_pair.pair_timestamp) * 1000.0 if current_packet else None)
                 ),
+                latest_inference_ms_by_camera=tuple(
+                    inference_ms[index] if index in observed_camera_indices else None
+                    for index in range(len(camera_sources))
+                ),
+                latest_total_inference_ms=sum(inference_ms),
+                single_camera_batches=single_camera_batches,
+                pair_drop_stats=pair_stats.copy(),
+                actual_camera_fps_by_camera=actual_fps,
             )
             if callbacks.performance_callback is not None:
                 callbacks.performance_callback(snapshot)
 
             target_interval_s = 1.0 / max(1.0, float(config.target_fps))
-            sleep_fn(max(0.0, target_interval_s - (clock.monotonic() - frame_pair.pair_timestamp)))
+            sleep_fn(max(0.0, target_interval_s - (clock.monotonic() - batch.batch_timestamp)))
             if camera_factory is not None and frame_count >= 2:
                 break
     finally:

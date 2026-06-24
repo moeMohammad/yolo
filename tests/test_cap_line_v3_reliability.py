@@ -1,0 +1,267 @@
+from __future__ import annotations
+
+import tempfile
+import threading
+import time
+import unittest
+from dataclasses import replace
+
+from cap_line_v3 import RuntimeCallbacks
+from cap_line_v3.config import RuntimeConfig
+from cap_line_v3.decision import (
+    TrackedCap,
+    TrackedCapManager,
+    compute_requested_trigger_delay,
+    decide_decision_ready,
+    decide_tracked_cap,
+)
+from cap_line_v3.pairing import select_capture_batch
+from cap_line_v3.runtime import LatestFrameCameraReader, run_detection
+from cap_line_v3.types import CapturedFrame, PairDropStats, TrackObservation
+
+
+class ShapeFrame:
+    shape = (100, 100, 3)
+
+    def __init__(self, detections=None):
+        self.detections = detections or []
+
+
+class FakeInput:
+    name = "images"
+    shape = [1, 3, 100, 100]
+
+
+class FakeSession:
+    def get_inputs(self):
+        return [FakeInput()]
+
+    def run(self, _outputs, inputs):
+        frame = next(iter(inputs.values()))
+        return [frame.detections]
+
+
+class FakeCamera:
+    def __init__(self, frame):
+        self.frame = frame
+        self.read_count = 0
+
+    def read(self):
+        self.read_count += 1
+        return True, self.frame
+
+    def isOpened(self):
+        return True
+
+    def set(self, *_args):
+        return True
+
+    def get(self, prop_id):
+        if int(prop_id) in (3, 4):
+            return 100.0
+        if int(prop_id) == 5:
+            return 60.0
+        return 0.0
+
+    def release(self):
+        return None
+
+
+class FiniteCamera:
+    def __init__(self, count):
+        self.count = int(count)
+        self.read_count = 0
+
+    def read(self):
+        if self.read_count >= self.count:
+            time.sleep(0.002)
+            return False, None
+        self.read_count += 1
+        return True, ShapeFrame()
+
+
+class CapLineV3ReliabilityTests(unittest.TestCase):
+    def test_pairing_uses_single_camera_fallback_after_wait(self):
+        stats = PairDropStats()
+        frame = CapturedFrame(0, ShapeFrame(), timestamp=1.0, sequence=1)
+
+        waiting = select_capture_batch(
+            ((frame,), ()),
+            now=1.005,
+            max_skew_ms=40.0,
+            single_camera_wait_ms=20.0,
+            stats=stats,
+        )
+        self.assertIsNone(waiting)
+
+        batch = select_capture_batch(
+            ((frame,), ()),
+            now=1.025,
+            max_skew_ms=40.0,
+            single_camera_wait_ms=20.0,
+            stats=stats,
+        )
+        self.assertIsNotNone(batch)
+        self.assertTrue(batch.is_single_camera)
+        self.assertEqual(batch.reason, "single_camera_wait")
+        self.assertEqual(batch.missing_camera_indices, (1,))
+        self.assertEqual(stats.missing_camera, 1)
+
+    def test_buffered_reader_keeps_multiple_pending_frames(self):
+        camera = FiniteCamera(4)
+        reader = LatestFrameCameraReader(camera, 0, target_fps=None, capture_buffer_frames=3)
+        reader.start()
+        deadline = time.monotonic() + 1.0
+        while reader.captured < 4 and time.monotonic() < deadline:
+            time.sleep(0.005)
+        reader.stop()
+
+        pending = reader.pending_after(0)
+        self.assertEqual([frame.sequence for frame in pending], [2, 3, 4])
+        self.assertEqual(reader.overwritten, 1)
+
+    def test_tracking_survives_configured_missing_frame(self):
+        manager = TrackedCapManager(
+            camera_count=2,
+            merge_window_seconds=0.2,
+            finalize_quiet_seconds=0.5,
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+            track_iou=0.3,
+            max_missing_frames=2,
+        )
+        frame_size = (100, 100)
+        manager.update(
+            [TrackObservation(0, (10, 40, 20, 60, 0.8, 1), 1.0, frame_size)],
+            observed_camera_indices={0},
+        )
+        manager.update([], observed_camera_indices={0})
+        manager.update(
+            [TrackObservation(0, (40, 40, 50, 60, 0.9, 1), 1.033, frame_size)],
+            observed_camera_indices={0},
+        )
+
+        open_caps = manager.open_caps()
+        self.assertEqual(len(open_caps), 1)
+        self.assertEqual(open_caps[0].camera_summaries[0].observation_count, 2)
+
+    def test_predicted_actuation_can_trigger_without_exact_line_frame(self):
+        config = replace(
+            RuntimeConfig.defaults(),
+            anchor_line_ratio=0.5,
+            reject_threshold=0.45,
+            actuation_prediction_horizon_ms=150.0,
+            actuation_window_ms=250.0,
+        )
+        cap = TrackedCap(event_id=1, created_at=1.0, last_seen_at=1.0)
+        frame_size = (100, 100)
+        cap.add_observation(
+            TrackObservation(0, (15, 40, 25, 60, 0.85, 1), 1.0, frame_size),
+            anchor_axis="x",
+            anchor_line_ratio=0.5,
+        )
+        cap.add_observation(
+            TrackObservation(0, (30, 40, 40, 60, 0.90, 1), 1.1, frame_size),
+            anchor_axis="x",
+            anchor_line_ratio=0.5,
+        )
+
+        decision = decide_decision_ready(cap, config=config, decision_ready_time=1.101, camera_count=1)
+        self.assertIsNotNone(decision)
+        self.assertEqual(decision.result, "trigger")
+        self.assertEqual(decision.decision_source, "predicted_actuation_threshold")
+        self.assertAlmostEqual(cap.actuation_time or 0.0, 1.2, places=3)
+
+    def test_deadline_fallback_waits_until_trigger_slack_is_low(self):
+        config = replace(
+            RuntimeConfig.defaults(),
+            anchor_line_ratio=0.75,
+            reject_threshold=0.45,
+            merge_window_ms=2000.0,
+            nozzle_distance_mm=100.0,
+            belt_speed_mm_per_s=100.0,
+            trigger_offset_s=0.0,
+            latency_compensation_ms=0.0,
+            decision_deadline_guard_ms=25.0,
+        )
+        cap = TrackedCap(event_id=1, created_at=10.0, last_seen_at=10.0)
+        cap.add_observation(
+            TrackObservation(0, (70, 40, 80, 60, 0.95, 1), 10.0, (100, 100), at_actuation_line=True),
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+        )
+
+        early = decide_decision_ready(cap, config=config, decision_ready_time=10.5, camera_count=2)
+        self.assertIsNone(early)
+
+        due_time = 10.0 + compute_requested_trigger_delay(config) - 0.010
+        due = decide_decision_ready(cap, config=config, decision_ready_time=due_time, camera_count=2)
+        self.assertIsNotNone(due)
+        self.assertEqual(due.decision_source, "single_camera_deadline_fallback")
+
+    def test_finalized_dirty_cap_without_actuation_is_logged_as_missed(self):
+        config = replace(RuntimeConfig.defaults(), reject_threshold=0.45)
+        cap = TrackedCap(event_id=1, created_at=1.0, last_seen_at=1.0)
+        cap.add_observation(
+            TrackObservation(0, (10, 40, 20, 60, 0.9, 1), 1.0, (100, 100)),
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+        )
+
+        decision = decide_tracked_cap(cap, config=config, decision_time=2.0, camera_count=2)
+        self.assertEqual(decision.result, "skip")
+        self.assertEqual(decision.decision_source, "no_actuation_crossing")
+        self.assertEqual(decision.review_reason, "missed_actuation")
+        self.assertEqual(decision.final_class_name, "dirt_defect")
+
+    def test_fake_runtime_triggers_once_for_single_camera_deadline_fallback(self):
+        dirty_box = [70, 40, 80, 60, 0.95, 1]
+        cameras = [FakeCamera(ShapeFrame([dirty_box])), FakeCamera(ShapeFrame([]))]
+        histories = []
+        timings = []
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = replace(
+                RuntimeConfig.defaults(),
+                cameras=("0", "1"),
+                simulate_gpio=True,
+                trigger_duration=0.001,
+                target_fps=60,
+                merge_window_ms=2000.0,
+                decision_deadline_guard_ms=5000.0,
+                nozzle_distance_mm=0.001,
+                belt_speed_mm_per_s=1000.0,
+                trigger_offset_s=0.0,
+                latency_compensation_ms=0.0,
+                timing_log_dir=temp_dir,
+                debug_dir=temp_dir,
+                pictures_dir=temp_dir,
+                session_log_dir=temp_dir,
+            )
+
+            run_detection(
+                config,
+                callbacks=RuntimeCallbacks(
+                    history_callback=histories.append,
+                    timing_log_callback=timings.append,
+                    log_fn=lambda *_args, **_kwargs: None,
+                ),
+                stop_event=threading.Event(),
+                camera_factory=lambda index, _source, _config: cameras[index],
+                session_factory=lambda _model_path, _threads: FakeSession(),
+                preprocess_fn=lambda frame, _imgsz: (frame, {"frame_shape": frame.shape}),
+                postprocess_fn=lambda output, _meta, conf_threshold: [
+                    box for box in output if float(box[4]) >= float(conf_threshold)
+                ],
+            )
+
+        triggers = [record for record in histories if record.result == "trigger"]
+        self.assertEqual(len(triggers), 1)
+        self.assertEqual(triggers[0].decision_source, "single_camera_deadline_fallback")
+        self.assertEqual(len(timings), 1)
+        self.assertIsNotNone(timings[0].trigger_on_time)
+        self.assertIsNotNone(timings[0].scheduler_late_ms)
+
+
+if __name__ == "__main__":
+    unittest.main()

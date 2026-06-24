@@ -49,6 +49,15 @@ def _frame_size(frame) -> tuple[int, int] | None:
     return int(shape[1]), int(shape[0])
 
 
+def _packet_frame_for_camera(packet: DetectionPacket, camera_index: int) -> CapturedFrame | None:
+    if packet.capture_batch is not None and camera_index < len(packet.capture_batch.frames_by_camera):
+        return packet.capture_batch.frames_by_camera[camera_index]
+    for captured in packet.frame_pair.frames:
+        if int(captured.camera_index) == int(camera_index):
+            return captured
+    return None
+
+
 def _actuation_line_boxes(
     captured: CapturedFrame,
     boxes: tuple[Box, ...],
@@ -121,11 +130,13 @@ def resolve_preview_views(
         return tuple(CameraPreviewView(frame, ()) for frame in live_frames)
 
     base_timeout_s = overlay_stale_timeout_s(target_fps)
-    current_timestamps = current_packet.frame_pair.timestamps
     views: list[CameraPreviewView] = []
     for camera_index, live_frame in enumerate(live_frames):
-        detection_frame = current_packet.frame_pair.frames[camera_index]
-        current_timestamp = current_timestamps[camera_index]
+        detection_frame = _packet_frame_for_camera(current_packet, camera_index)
+        if detection_frame is None:
+            views.append(CameraPreviewView(live_frame, ()))
+            continue
+        current_timestamp = detection_frame.timestamp
         previous_boxes = (
             previous_packet.boxes_by_camera[camera_index]
             if previous_packet is not None and camera_index < len(previous_packet.boxes_by_camera)
