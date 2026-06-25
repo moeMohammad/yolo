@@ -91,6 +91,7 @@ class TrackObservation:
     timestamp: float
     frame_size: tuple[int, int]
     at_actuation_line: bool = False
+    sequence: int | None = None
 
     @property
     def class_id(self) -> int:

@@ -5,9 +5,12 @@ import threading
 import time
 import unittest
 from dataclasses import replace
+from pathlib import Path
 
+import cap_line_ui_v3
+import cap_line_v3.runtime as runtime
 from cap_line_v3 import RuntimeCallbacks
-from cap_line_v3.config import RuntimeConfig
+from cap_line_v3.config import DEFAULT_MODEL, RuntimeConfig
 from cap_line_v3.decision import (
     TrackedCap,
     TrackedCapManager,
@@ -16,8 +19,15 @@ from cap_line_v3.decision import (
     decide_tracked_cap,
 )
 from cap_line_v3.pairing import select_capture_batch
-from cap_line_v3.runtime import LatestFrameCameraReader, run_detection
-from cap_line_v3.types import CapturedFrame, PairDropStats, TrackObservation
+from cap_line_v3.preview import CameraPreviewView
+from cap_line_v3.runtime import (
+    LatestFrameCameraReader,
+    LivePreviewPublisher,
+    resolve_model_path,
+    run_detection,
+)
+from cap_line_v3.types import CapturedFrame, DetectionPacket, FramePair, PairDropStats, TrackObservation
+from cap_line_ui_v3 import ConfigSettingsStore
 
 
 class ShapeFrame:
@@ -81,6 +91,37 @@ class FiniteCamera:
 
 
 class CapLineV3ReliabilityTests(unittest.TestCase):
+    def test_default_v3_model_is_dirtv5(self):
+        self.assertEqual(DEFAULT_MODEL, "dirtv5.onnx")
+        self.assertEqual(RuntimeConfig.defaults().model, "dirtv5.onnx")
+        resolved_path, _imgsz = resolve_model_path(RuntimeConfig.defaults().model)
+        self.assertEqual(Path(resolved_path).name, "dirtv5.onnx")
+
+    def test_ui_settings_migrate_legacy_default_model(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_path = Path(temp_dir) / "settings.json"
+            settings_path.write_text('{"model": "dirtv2.onnx"}', encoding="utf-8")
+
+            config = ConfigSettingsStore(settings_path).load()
+
+        self.assertEqual(config.model, "dirtv5.onnx")
+
+    def test_ui_settings_preserve_custom_model_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_path = Path(temp_dir) / "settings.json"
+            settings_path.write_text('{"model": "./custom/dirtv2.onnx"}', encoding="utf-8")
+
+            config = ConfigSettingsStore(settings_path).load()
+
+        self.assertEqual(config.model, "./custom/dirtv2.onnx")
+
+    def test_prediction_text_formats_class_and_confidence(self):
+        format_prediction_text = getattr(cap_line_ui_v3, "format_prediction_text", None)
+        self.assertIsNotNone(format_prediction_text)
+        self.assertEqual(format_prediction_text("dirt_defect", 0.9532), "dirt_defect 0.953")
+        self.assertEqual(format_prediction_text("undefected", 0.8872), "undefected 0.887")
+        self.assertEqual(format_prediction_text(None, None), "-")
+
     def test_pairing_uses_single_camera_fallback_after_wait(self):
         stats = PairDropStats()
         frame = CapturedFrame(0, ShapeFrame(), timestamp=1.0, sequence=1)
@@ -213,6 +254,94 @@ class CapLineV3ReliabilityTests(unittest.TestCase):
         self.assertEqual(decision.decision_source, "no_actuation_crossing")
         self.assertEqual(decision.review_reason, "missed_actuation")
         self.assertEqual(decision.final_class_name, "dirt_defect")
+
+    def test_finalized_clean_cap_without_actuation_reports_undefected(self):
+        config = replace(RuntimeConfig.defaults(), reject_threshold=0.45)
+        cap = TrackedCap(event_id=1, created_at=1.0, last_seen_at=1.0)
+        cap.add_observation(
+            TrackObservation(0, (10, 40, 20, 60, 0.8872, 0), 1.0, (100, 100)),
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+        )
+
+        decision = decide_tracked_cap(cap, config=config, decision_time=2.0, camera_count=2)
+
+        self.assertEqual(decision.result, "skip")
+        self.assertEqual(decision.decision_source, "no_actuation_crossing")
+        self.assertEqual(decision.final_class_name, "undefected")
+        self.assertAlmostEqual(decision.final_score or 0.0, 0.8872)
+
+    def test_decision_preview_views_use_actuation_and_other_camera_observations(self):
+        build_views = getattr(runtime, "_build_decision_preview_views", None)
+        self.assertIsNotNone(build_views)
+        line_box = (70, 40, 80, 60, 0.95, 1)
+        other_box = (20, 40, 30, 60, 0.91, 1)
+        captured0 = CapturedFrame(0, ShapeFrame(), timestamp=1.0, sequence=5)
+        captured1 = CapturedFrame(1, ShapeFrame(), timestamp=1.005, sequence=7)
+        packet = DetectionPacket(
+            FramePair((captured0, captured1), pair_timestamp=1.005, skew_ms=5.0),
+            ((line_box,), (other_box,)),
+            (2.0, 2.0),
+        )
+        cap = TrackedCap(event_id=1, created_at=1.0, last_seen_at=1.005)
+        cap.add_observation(
+            TrackObservation(0, line_box, 1.0, (100, 100), at_actuation_line=True, sequence=5),
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+        )
+        cap.add_observation(
+            TrackObservation(1, other_box, 1.005, (100, 100), sequence=7),
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+        )
+
+        views = build_views(
+            cap,
+            (packet,),
+            camera_count=2,
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+        )
+
+        self.assertIsNotNone(views[0])
+        self.assertIsNotNone(views[1])
+        self.assertIs(views[0].captured, captured0)
+        self.assertEqual(views[0].boxes, (line_box,))
+        self.assertIs(views[1].captured, captured1)
+        self.assertEqual(views[1].boxes, (other_box,))
+
+    def test_decision_snapshot_hold_survives_stale_live_preview(self):
+        now = [10.0]
+        line_box = (70, 40, 80, 60, 0.95, 1)
+        snapshot_view = CameraPreviewView(
+            CapturedFrame(0, ShapeFrame(), timestamp=9.9, sequence=4),
+            (line_box,),
+        )
+        live_view = CameraPreviewView(
+            CapturedFrame(0, ShapeFrame(), timestamp=10.2, sequence=5),
+            (),
+        )
+        publisher = LivePreviewPublisher(
+            [],
+            lambda _preview: None,
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+            preview_fps=30,
+            overlay_target_fps=60,
+            actuation_snapshot_hold_ms=900.0,
+            time_fn=lambda: now[0],
+        )
+        self.assertTrue(hasattr(publisher, "update_decision_snapshot"))
+
+        publisher.update_decision_snapshot((snapshot_view,))
+        held = publisher._hold_actuation_snapshots((live_view,))
+
+        self.assertIs(held[0], snapshot_view)
+
+        now[0] = 10.95
+        expired = publisher._hold_actuation_snapshots((live_view,))
+
+        self.assertIs(expired[0], live_view)
 
     def test_fake_runtime_triggers_once_for_single_camera_deadline_fallback(self):
         dirty_box = [70, 40, 80, 60, 0.95, 1]

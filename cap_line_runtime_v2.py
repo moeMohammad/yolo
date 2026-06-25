@@ -32,7 +32,7 @@ from gpio_output import GPIOOutputPin
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CLASS_NAMES = base.CLASS_NAMES
 DEFECT_CLASS_ID = base.DEFECT_CLASS_ID
-DEFAULT_MODEL = "dirtv2.onnx"
+DEFAULT_MODEL = "dirtv5.onnx"
 MODEL_ALIASES = {
     "default": DEFAULT_MODEL,
     "best": DEFAULT_MODEL,

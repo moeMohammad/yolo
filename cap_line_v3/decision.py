@@ -594,11 +594,16 @@ def decide_tracked_cap(
 
     full_evaluation = build_evaluation(tracked_cap.camera_summaries, camera_count=camera_count)
     if tracked_cap.actuation_time is None:
-        final_class_id = DEFECT_CLASS_ID if full_evaluation.dirt_score >= float(config.reject_threshold) else None
+        if full_evaluation.dirt_score >= float(config.reject_threshold):
+            final_class_id = DEFECT_CLASS_ID
+        elif full_evaluation.total_observations > 0:
+            final_class_id = 0
+        else:
+            final_class_id = None
         return _build_decision(
             result="skip",
             final_class_name=None if final_class_id is None else class_name(final_class_id),
-            final_score=None if final_class_id is None else full_evaluation.dirt_score,
+            final_score=None if final_class_id is None else full_evaluation.class_scores.get(final_class_id, 0.0),
             decision_source="no_actuation_crossing",
             evaluation=full_evaluation,
             anchor_time=_anchor_time(tracked_cap),
