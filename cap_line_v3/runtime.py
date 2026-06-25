@@ -17,7 +17,7 @@ from gpio_output import GPIOOutputPin
 from .actuation import NullGPIOOutputPin, RejectScheduler
 from .config import DEFAULT_MODEL, RuntimeConfig, validate_config
 from .decision import TrackedCapManager, decide_decision_ready, decide_tracked_cap
-from .geometry import box_spans_line_coordinate, class_name, frame_line_coordinate
+from .geometry import box_crossed_line_between, box_spans_line_coordinate, class_name, frame_line_coordinate
 from .pairing import default_single_camera_wait_ms, select_capture_batch
 from .preview import CameraPreviewView, resolve_preview_views
 from .types import (
@@ -653,6 +653,19 @@ class LivePreviewPublisher:
             self._previous_packet = self._current_packet
             self._current_packet = packet
 
+    def update_decision_snapshot(self, preview_views: tuple[CameraPreviewView | None, ...]) -> None:
+        if self.actuation_snapshot_hold_s <= 0.0:
+            return
+        now = float(self.time_fn())
+        with self._snapshot_lock:
+            for camera_index, view in enumerate(preview_views):
+                if view is None or not view.boxes:
+                    continue
+                self._actuation_snapshots[int(camera_index)] = (
+                    now + self.actuation_snapshot_hold_s,
+                    view,
+                )
+
     def update_overlay(self, frame_pair, boxes_by_camera) -> None:
         packet = DetectionPacket(
             frame_pair,
@@ -728,18 +741,20 @@ class LivePreviewPublisher:
             for camera_index in expired:
                 self._actuation_snapshots.pop(camera_index, None)
 
+            for camera_index, (_expires_at, snapshot_view) in self._actuation_snapshots.items():
+                if camera_index < len(held_views):
+                    held_views[camera_index] = snapshot_view
+
             for camera_index, view in enumerate(preview_views):
+                if camera_index in self._actuation_snapshots:
+                    continue
                 if view.boxes:
                     self._actuation_snapshots[camera_index] = (
                         now + self.actuation_snapshot_hold_s,
                         view,
                     )
+                    held_views[camera_index] = view
                     continue
-                snapshot = self._actuation_snapshots.get(camera_index)
-                if snapshot is None:
-                    continue
-                _expires_at, snapshot_view = snapshot
-                held_views[camera_index] = snapshot_view
         return tuple(held_views)
 
 
@@ -848,6 +863,118 @@ def _write_debug_artifact(
             continue
 
 
+def _find_captured_frame(
+    observation: TrackObservation,
+    recent_packets: tuple[DetectionPacket, ...],
+) -> CapturedFrame | None:
+    if observation.sequence is None:
+        return None
+    camera_index = int(observation.camera_index)
+    sequence = int(observation.sequence)
+    for packet in reversed(recent_packets):
+        for captured in packet.frame_pair.frames:
+            if int(captured.camera_index) == camera_index and int(captured.sequence) == sequence:
+                return captured
+    return None
+
+
+def _nearest_observation(
+    observations: list[TrackObservation],
+    target_time: float,
+) -> TrackObservation | None:
+    if not observations:
+        return None
+    return min(
+        observations,
+        key=lambda observation: abs(float(observation.timestamp) - float(target_time)),
+    )
+
+
+def _actuation_observation(
+    observations: list[TrackObservation],
+    *,
+    target_time: float,
+    anchor_axis: str,
+    anchor_line_ratio: float,
+) -> TrackObservation | None:
+    candidates = []
+    for index, observation in enumerate(observations):
+        line_coordinate = frame_line_coordinate(
+            observation.frame_size,
+            axis=anchor_axis,
+            ratio=anchor_line_ratio,
+        )
+        spans_line = observation.at_actuation_line or box_spans_line_coordinate(
+            observation.box,
+            axis=anchor_axis,
+            line_coordinate=line_coordinate,
+        )
+        crossed_line = (
+            index > 0
+            and box_crossed_line_between(
+                observations[index - 1].box,
+                observation.box,
+                axis=anchor_axis,
+                line_coordinate=line_coordinate,
+            )
+        )
+        if spans_line or crossed_line:
+            candidates.append(observation)
+    return _nearest_observation(candidates, target_time)
+
+
+def _view_for_observation(
+    observation: TrackObservation | None,
+    recent_packets: tuple[DetectionPacket, ...],
+) -> CameraPreviewView | None:
+    if observation is None:
+        return None
+    captured = _find_captured_frame(observation, recent_packets)
+    if captured is None:
+        return None
+    return CameraPreviewView(captured, (observation.box,))
+
+
+def _build_decision_preview_views(
+    tracked_cap,
+    recent_packets: tuple[DetectionPacket, ...],
+    *,
+    camera_count: int,
+    anchor_axis: str,
+    anchor_line_ratio: float,
+) -> tuple[CameraPreviewView | None, ...]:
+    target_time = (
+        tracked_cap.actuation_time
+        if tracked_cap.actuation_time is not None
+        else tracked_cap.anchor_time
+        if tracked_cap.anchor_time is not None
+        else tracked_cap.last_seen_at
+    )
+    actuation_camera_index = (
+        tracked_cap.actuation_camera_index
+        if tracked_cap.actuation_camera_index is not None
+        else tracked_cap.anchor_camera_index
+    )
+    views: list[CameraPreviewView | None] = [None for _ in range(int(camera_count))]
+    for camera_index in range(int(camera_count)):
+        observations = list(tracked_cap.observations_by_camera.get(camera_index, []))
+        if not observations:
+            continue
+        if actuation_camera_index is not None and camera_index == int(actuation_camera_index):
+            selected = _actuation_observation(
+                observations,
+                target_time=float(target_time),
+                anchor_axis=anchor_axis,
+                anchor_line_ratio=anchor_line_ratio,
+            )
+            if selected is None:
+                selected = _nearest_observation(observations, float(target_time))
+        else:
+            selected = _nearest_observation(observations, float(target_time))
+        views[camera_index] = _view_for_observation(selected, recent_packets)
+    return tuple(views)
+
+
 def _run_camera_inference(
     *,
     camera_index: int,
@@ -884,6 +1011,7 @@ def _run_camera_inference(
                 axis=anchor_axis,
                 line_coordinate=line_coordinate,
             ),
+            sequence=captured.sequence,
         )
         for box in boxes
     ]
@@ -999,6 +1127,9 @@ def run_detection(
         if config.single_camera_wait_ms is None
         else float(config.single_camera_wait_ms)
     )
+    recent_packets: deque[DetectionPacket] = deque(
+        maxlen=max(16, int(float(config.target_fps) * 2.0), int(config.capture_buffer_frames) * 4)
+    )
     current_packet: DetectionPacket | None = None
     cap_manager = TrackedCapManager(
         camera_count=len(camera_sources),
@@ -1030,6 +1161,16 @@ def run_detection(
         )
 
     def _emit_decision(tracked_cap, decision, packet: DetectionPacket | None, *, enqueue_trigger: bool) -> None:
+        if live_preview is not None:
+            live_preview.update_decision_snapshot(
+                _build_decision_preview_views(
+                    tracked_cap,
+                    tuple(recent_packets),
+                    camera_count=len(camera_sources),
+                    anchor_axis=config.anchor_axis,
+                    anchor_line_ratio=config.anchor_line_ratio,
+                )
+            )
         history = _record_history(tracked_cap.event_id, decision, clock, config)
         timing = _timing_record(tracked_cap.event_id, decision, clock)
         if packet is not None:
@@ -1160,6 +1301,7 @@ def run_detection(
                 capture_batch=batch,
             )
             current_packet = packet
+            recent_packets.append(packet)
             if live_preview is not None:
                 live_preview.update_packet(packet)
             observed_camera_indices = {int(captured.camera_index) for captured in batch.frames}

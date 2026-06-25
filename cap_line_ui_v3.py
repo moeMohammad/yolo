@@ -66,6 +66,15 @@ def create_gui_config() -> RuntimeConfig:
     return RuntimeConfig.defaults()
 
 
+def format_prediction_text(class_name: object, confidence: object, *, digits: int = 3) -> str:
+    if class_name in (None, "") or confidence in (None, ""):
+        return "-"
+    try:
+        return f"{class_name} {float(confidence):.{digits}f}"
+    except (TypeError, ValueError):
+        return str(class_name)
+
+
 class ConfigSettingsStore:
     def __init__(self, path: str | os.PathLike[str] = DEFAULT_SETTINGS_PATH):
         self.path = Path(path)
@@ -186,6 +195,7 @@ class DetectionAppController:
         self._message_queue: queue.Queue[tuple[str, object]] = queue.Queue()
         self._preview_lock = threading.Lock()
         self._latest_preview = None
+        self.latest_prediction_text = "-"
 
     def start(self) -> bool:
         if self.is_running:
@@ -201,6 +211,7 @@ class DetectionAppController:
         self._message_queue = queue.Queue()
         with self._preview_lock:
             self._latest_preview = None
+        self.latest_prediction_text = "-"
         self.is_running = True
         self.status_text = "Running"
         self.worker_thread.start()
@@ -251,6 +262,7 @@ class DetectionAppController:
         timing_records = []
         latest_performance = None
         latest_error = None
+        latest_prediction = None
         stopped = False
 
         while True:
@@ -261,6 +273,11 @@ class DetectionAppController:
             if kind == "history":
                 self.repository.insert_record(payload)
                 history_records.append(payload)
+                latest_prediction = format_prediction_text(
+                    getattr(payload, "final_class_name", None),
+                    getattr(payload, "final_score", None),
+                )
+                self.latest_prediction_text = latest_prediction
             elif kind == "timing":
                 timing_records.append(payload)
             elif kind == "performance":
@@ -285,6 +302,7 @@ class DetectionAppController:
             "timing_records": timing_records,
             "latest_preview": latest_preview,
             "latest_performance": latest_performance,
+            "latest_prediction": latest_prediction,
             "error": latest_error,
             "stopped": stopped,
         }
@@ -400,6 +418,14 @@ if PYQT_AVAILABLE:
             row.addWidget(self.start_button)
             row.addWidget(self.stop_button)
             side_layout.addLayout(row)
+            prediction = QGroupBox("Prediction")
+            prediction_layout = QGridLayout(prediction)
+            prediction_title = QLabel("Latest")
+            self.prediction_value = QLabel("-")
+            self.prediction_value.setStyleSheet("font-size: 18pt; font-weight: 700;")
+            prediction_layout.addWidget(prediction_title, 0, 0)
+            prediction_layout.addWidget(self.prediction_value, 0, 1)
+            side_layout.addWidget(prediction)
             metrics = QGroupBox("Session")
             metrics_layout = QGridLayout(metrics)
             for index, key in enumerate((
@@ -608,6 +634,7 @@ if PYQT_AVAILABLE:
                     widget.setEnabled(enabled)
 
         def _start_detection(self) -> None:
+            self.prediction_value.setText("-")
             self.controller.start()
             self._sync_controls()
 
@@ -628,6 +655,8 @@ if PYQT_AVAILABLE:
                 self._update_preview(changes["latest_preview"])
             if changes["history_records"]:
                 self._load_history_table()
+            if changes["latest_prediction"] is not None:
+                self.prediction_value.setText(str(changes["latest_prediction"]))
             if changes["latest_performance"] is not None:
                 self._update_performance(changes["latest_performance"])
             if changes["error"] is not None or changes["stopped"]:

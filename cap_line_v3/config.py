@@ -12,7 +12,8 @@ from gpio_output import DEFAULT_TRIGGER_PIN
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 CLASS_NAMES = ("undefected", "dirt_defect")
 DEFECT_CLASS_ID = 1
-DEFAULT_MODEL = "dirtv2.onnx"
+DEFAULT_MODEL = "dirtv5.onnx"
+LEGACY_DEFAULT_MODELS = ("dirtv2.onnx",)
 DEFAULT_CAMERA_RESOLUTION = (960, 600)
 DEFAULT_CAMERA_FPS = 60
 DEFAULT_CAMERA_PIXEL_FORMAT = "YUYV"
@@ -32,7 +33,7 @@ DEFAULT_LATENCY_COMPENSATION_MS = 50.0
 DEFAULT_PREVIEW_LATENCY_COMPENSATION_MS = 0.0
 DEFAULT_LIVE_PREVIEW_FPS = 30.0
 DEFAULT_ANCHOR_LINE_RATIO = 0.75
-DEFAULT_ACTUATION_SNAPSHOT_HOLD_MS = 450.0
+DEFAULT_ACTUATION_SNAPSHOT_HOLD_MS = 900.0
 DEFAULT_SAVE_QUEUE_WARNING_THRESHOLD = 25
 DEFAULT_CAPTURE_BUFFER_FRAMES = 8
 DEFAULT_DECISION_DEADLINE_GUARD_MS = 25.0
@@ -105,6 +106,8 @@ class RuntimeConfig:
         defaults = cls.defaults()
         allowed = defaults.to_json_dict()
         merged = {**allowed, **{key: value for key, value in data.items() if key in allowed}}
+        if str(merged.get("model", "")).strip() in LEGACY_DEFAULT_MODELS:
+            merged["model"] = defaults.model
         if float(merged.get("anchor_line_ratio", defaults.anchor_line_ratio)) <= 0.60:
             merged["anchor_line_ratio"] = defaults.anchor_line_ratio
         merged["cameras"] = tuple(str(value) for value in merged["cameras"])  # type: ignore[assignment]
