@@ -12,8 +12,7 @@ from gpio_output import DEFAULT_TRIGGER_PIN
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 CLASS_NAMES = ("undefected", "dirt_defect")
 DEFECT_CLASS_ID = 1
-DEFAULT_MODEL = "dirtv5.onnx"
-LEGACY_DEFAULT_MODELS = ("dirtv2.onnx",)
+DEFAULT_MODEL = "dirtv6.onnx"
 DEFAULT_CAMERA_RESOLUTION = (960, 600)
 DEFAULT_CAMERA_FPS = 60
 DEFAULT_CAMERA_PIXEL_FORMAT = "YUYV"
@@ -106,8 +105,6 @@ class RuntimeConfig:
         defaults = cls.defaults()
         allowed = defaults.to_json_dict()
         merged = {**allowed, **{key: value for key, value in data.items() if key in allowed}}
-        if str(merged.get("model", "")).strip() in LEGACY_DEFAULT_MODELS:
-            merged["model"] = defaults.model
         if float(merged.get("anchor_line_ratio", defaults.anchor_line_ratio)) <= 0.60:
             merged["anchor_line_ratio"] = defaults.anchor_line_ratio
         merged["cameras"] = tuple(str(value) for value in merged["cameras"])  # type: ignore[assignment]

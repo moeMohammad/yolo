@@ -19,7 +19,8 @@ from cap_line_runtime_v3 import RuntimeCallbacks, RuntimeConfig, run_detection
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_DB_PATH = str(SCRIPT_DIR / "data" / "cap_line_history_v3.sqlite3")
-DEFAULT_SETTINGS_PATH = str(SCRIPT_DIR / "data" / "cap_line_ui_v3_settings.json")
+DEFAULT_SETTINGS_PATH = str(SCRIPT_DIR / "cap_line_ui_v3_settings.json")
+LEGACY_SETTINGS_PATH = str(SCRIPT_DIR / "data" / "cap_line_ui_v3_settings.json")
 EVENT_LIMIT = 100
 TIMING_LOG_LIMIT = 100
 LIVE_POLL_INTERVAL_MS = 16
@@ -75,17 +76,64 @@ def format_prediction_text(class_name: object, confidence: object, *, digits: in
         return str(class_name)
 
 
+def _read_settings_dict(path: Path) -> dict | None:
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def migrate_legacy_settings_if_needed(
+    *,
+    path: Path | None = None,
+    legacy_path: Path | None = None,
+) -> bool:
+    settings_path = Path(path or DEFAULT_SETTINGS_PATH)
+    old_settings_path = Path(legacy_path or LEGACY_SETTINGS_PATH)
+    legacy_data = _read_settings_dict(old_settings_path)
+    if legacy_data is None:
+        return False
+
+    new_data = _read_settings_dict(settings_path)
+    if new_data is None:
+        new_data = RuntimeConfig.defaults().to_json_dict()
+
+    merged = {**new_data, **legacy_data}
+    merged["model"] = new_data.get("model", RuntimeConfig.defaults().model)
+
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(
+        json.dumps(merged, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    old_settings_path.unlink(missing_ok=True)
+    return True
+
+
 class ConfigSettingsStore:
-    def __init__(self, path: str | os.PathLike[str] = DEFAULT_SETTINGS_PATH):
+    def __init__(
+        self,
+        path: str | os.PathLike[str] = DEFAULT_SETTINGS_PATH,
+        *,
+        legacy_path: str | os.PathLike[str] = LEGACY_SETTINGS_PATH,
+    ):
         self.path = Path(path)
+        self.legacy_path = Path(legacy_path)
 
     def load(self) -> RuntimeConfig:
+        migrate_legacy_settings_if_needed(
+            path=self.path,
+            legacy_path=self.legacy_path,
+        )
         if not self.path.exists():
             return create_gui_config()
         try:
-            config = RuntimeConfig.from_json_dict(json.loads(self.path.read_text(encoding="utf-8")))
-            self.save(config)
-            return config
+            return RuntimeConfig.from_json_dict(
+                json.loads(self.path.read_text(encoding="utf-8"))
+            )
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             return create_gui_config()
 

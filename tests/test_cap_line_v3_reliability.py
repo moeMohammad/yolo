@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import threading
 import time
@@ -27,7 +28,7 @@ from cap_line_v3.runtime import (
     run_detection,
 )
 from cap_line_v3.types import CapturedFrame, DetectionPacket, FramePair, PairDropStats, TrackObservation
-from cap_line_ui_v3 import ConfigSettingsStore
+from cap_line_ui_v3 import ConfigSettingsStore, DEFAULT_SETTINGS_PATH
 
 
 class ShapeFrame:
@@ -91,20 +92,69 @@ class FiniteCamera:
 
 
 class CapLineV3ReliabilityTests(unittest.TestCase):
-    def test_default_v3_model_is_dirtv5(self):
-        self.assertEqual(DEFAULT_MODEL, "dirtv5.onnx")
-        self.assertEqual(RuntimeConfig.defaults().model, "dirtv5.onnx")
+    def test_default_v3_model_is_dirtv6(self):
+        self.assertEqual(DEFAULT_MODEL, "dirtv6.onnx")
+        self.assertEqual(RuntimeConfig.defaults().model, "dirtv6.onnx")
         resolved_path, _imgsz = resolve_model_path(RuntimeConfig.defaults().model)
-        self.assertEqual(Path(resolved_path).name, "dirtv5.onnx")
+        self.assertEqual(Path(resolved_path).name, "dirtv6.onnx")
 
-    def test_ui_settings_migrate_legacy_default_model(self):
+    def test_ui_settings_use_tracked_defaults_file(self):
+        settings_path = Path(DEFAULT_SETTINGS_PATH)
+        self.assertTrue(settings_path.is_file(), msg=f"missing tracked defaults: {settings_path}")
+        config = ConfigSettingsStore(settings_path).load()
+        self.assertEqual(config.model, "dirtv6.onnx")
+
+    def test_ui_settings_preserve_explicit_legacy_model(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             settings_path = Path(temp_dir) / "settings.json"
-            settings_path.write_text('{"model": "dirtv2.onnx"}', encoding="utf-8")
+            settings_path.write_text('{"model": "dirtv5.onnx"}', encoding="utf-8")
 
             config = ConfigSettingsStore(settings_path).load()
 
         self.assertEqual(config.model, "dirtv5.onnx")
+
+    def test_ui_settings_migrate_legacy_runtime_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            settings_path = temp_path / "cap_line_ui_v3_settings.json"
+            legacy_path = temp_path / "data" / "cap_line_ui_v3_settings.json"
+            settings_path.write_text(
+                '{"model": "dirtv6.onnx", "reject_threshold": 0.45}',
+                encoding="utf-8",
+            )
+            legacy_path.parent.mkdir(parents=True, exist_ok=True)
+            legacy_path.write_text(
+                '{"model": "dirtv5.onnx", "reject_threshold": 0.61, "cameras": ["1", "2"]}',
+                encoding="utf-8",
+            )
+
+            config = ConfigSettingsStore(
+                settings_path,
+                legacy_path=legacy_path,
+            ).load()
+            saved = json.loads(settings_path.read_text(encoding="utf-8"))
+            self.assertEqual(config.model, "dirtv6.onnx")
+            self.assertEqual(config.reject_threshold, 0.61)
+            self.assertEqual(tuple(config.cameras), ("1", "2"))
+            self.assertEqual(saved["model"], "dirtv6.onnx")
+            self.assertEqual(saved["reject_threshold"], 0.61)
+            self.assertEqual(saved["cameras"], ["1", "2"])
+
+    def test_ui_settings_migration_is_one_shot(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            settings_path = temp_path / "cap_line_ui_v3_settings.json"
+            legacy_path = temp_path / "data" / "cap_line_ui_v3_settings.json"
+            settings_path.write_text('{"model": "dirtv6.onnx"}', encoding="utf-8")
+            legacy_path.parent.mkdir(parents=True, exist_ok=True)
+            legacy_path.write_text('{"reject_threshold": 0.61}', encoding="utf-8")
+            store = ConfigSettingsStore(settings_path, legacy_path=legacy_path)
+
+            store.load()
+            config = store.load()
+
+        self.assertEqual(config.reject_threshold, 0.61)
+        self.assertFalse(legacy_path.exists())
 
     def test_ui_settings_preserve_custom_model_path(self):
         with tempfile.TemporaryDirectory() as temp_dir:
