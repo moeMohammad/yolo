@@ -513,6 +513,14 @@ def _deadline_fallback_due(
     return remaining_s <= float(config.decision_deadline_guard_ms) / 1000.0
 
 
+def _has_defect_camera_vote(evaluation: CapEvaluation) -> bool:
+    return any(vote.class_id == DEFECT_CLASS_ID for vote in evaluation.camera_votes.values())
+
+
+def _is_defective_evaluation(evaluation: CapEvaluation, *, config: RuntimeConfig) -> bool:
+    return evaluation.dirt_score >= float(config.reject_threshold) or _has_defect_camera_vote(evaluation)
+
+
 def decide_decision_ready(
     tracked_cap: TrackedCap,
     *,
@@ -528,14 +536,22 @@ def decide_decision_ready(
         return None
 
     evaluation = build_evaluation(tracked_cap.actuation_camera_summaries, camera_count=camera_count)
-    if evaluation.total_observations <= 0 or evaluation.dirt_score < float(config.reject_threshold):
+    if evaluation.total_observations <= 0 or not _is_defective_evaluation(evaluation, config=config):
         return None
 
-    base_decision_source = (
-        "predicted_actuation_threshold"
-        if tracked_cap.predicted_actuation
-        else "highest_defect_threshold"
-    )
+    defect_vote_override = evaluation.dirt_score < float(config.reject_threshold)
+    if defect_vote_override:
+        base_decision_source = (
+            "predicted_actuation_camera_defect_vote"
+            if tracked_cap.predicted_actuation
+            else "camera_defect_vote"
+        )
+    else:
+        base_decision_source = (
+            "predicted_actuation_threshold"
+            if tracked_cap.predicted_actuation
+            else "highest_defect_threshold"
+        )
     base_review_reason = "predicted_actuation" if tracked_cap.predicted_actuation else "trigger"
     candidate = _build_decision(
         result="trigger",
@@ -594,7 +610,7 @@ def decide_tracked_cap(
 
     full_evaluation = build_evaluation(tracked_cap.camera_summaries, camera_count=camera_count)
     if tracked_cap.actuation_time is None:
-        if full_evaluation.dirt_score >= float(config.reject_threshold):
+        if _is_defective_evaluation(full_evaluation, config=config):
             final_class_id = DEFECT_CLASS_ID
         elif full_evaluation.total_observations > 0:
             final_class_id = 0
@@ -611,7 +627,7 @@ def decide_tracked_cap(
             config=config,
             review_reason=(
                 "missed_actuation"
-                if full_evaluation.dirt_score >= float(config.reject_threshold)
+                if _is_defective_evaluation(full_evaluation, config=config)
                 else None
             ),
         )
@@ -628,11 +644,11 @@ def decide_tracked_cap(
             decision_ready_time=decision_time,
             config=config,
         )
-    final_class_id = DEFECT_CLASS_ID if evaluation.dirt_score >= float(config.reject_threshold) else 0
+    final_class_id = DEFECT_CLASS_ID if _is_defective_evaluation(evaluation, config=config) else 0
     review_reason = (
         "dirty_before_clean_actuation"
-        if full_evaluation.dirt_score >= float(config.reject_threshold)
-        and evaluation.dirt_score < float(config.reject_threshold)
+        if _is_defective_evaluation(full_evaluation, config=config)
+        and not _is_defective_evaluation(evaluation, config=config)
         else None
     )
     return _build_decision(

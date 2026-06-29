@@ -290,6 +290,28 @@ class CapLineV3ReliabilityTests(unittest.TestCase):
         self.assertIsNotNone(due)
         self.assertEqual(due.decision_source, "single_camera_deadline_fallback")
 
+    def test_disagreeing_camera_votes_trigger_defect_regardless_of_confidence(self):
+        config = replace(RuntimeConfig.defaults(), reject_threshold=0.80)
+        cap = TrackedCap(event_id=1, created_at=1.0, last_seen_at=1.0)
+        cap.add_observation(
+            TrackObservation(0, (70, 40, 80, 60, 0.99, 0), 1.0, (100, 100), at_actuation_line=True),
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+        )
+        cap.add_observation(
+            TrackObservation(1, (70, 40, 80, 60, 0.50, 1), 1.0, (100, 100), at_actuation_line=True),
+            anchor_axis="x",
+            anchor_line_ratio=0.75,
+        )
+
+        decision = decide_decision_ready(cap, config=config, decision_ready_time=1.0, camera_count=2)
+
+        self.assertIsNotNone(decision)
+        self.assertEqual(decision.result, "trigger")
+        self.assertEqual(decision.decision_source, "camera_defect_vote")
+        self.assertEqual(decision.final_class_name, "dirt_defect")
+        self.assertAlmostEqual(decision.final_score or 0.0, 0.50)
+
     def test_finalized_dirty_cap_without_actuation_is_logged_as_missed(self):
         config = replace(RuntimeConfig.defaults(), reject_threshold=0.45)
         cap = TrackedCap(event_id=1, created_at=1.0, last_seen_at=1.0)
