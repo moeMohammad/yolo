@@ -1,0 +1,32 @@
+{
+  "cameras": [
+    "0",
+    "3"
+  ],
+  "db_path": "data/cap_line_history_v4.sqlite3",
+  "exposure": 8,
+  "fire_delay_s": 0.0,
+  "global_cooldown_ms": 50.0,
+  "imgsz": null,
+  "live_preview_fps": 30.0,
+  "mirror_cameras": [
+    false,
+    true
+  ],
+  "model": "dirtv6.onnx",
+  "no_display": false,
+  "onnx_intra_op_threads": 2,
+  "pixel_format": "YUYV",
+  "reject_threshold": 0.45,
+  "resolution": [
+    960,
+    600
+  ],
+  "simulate_gpio": false,
+  "target_fps": 60,
+  "track_iou": 0.3,
+  "track_timeout_ms": 30.0,
+  "trigger_duration": 0.3,
+  "trigger_min_gap": 0.0,
+  "trigger_pin": 7
+}
