@@ -170,6 +170,7 @@ class HistoryRepository:
                         final_class_name TEXT,
                         final_score REAL,
                         decision_source TEXT NOT NULL,
+                        camera_label TEXT,
                         camera_labels_json TEXT NOT NULL,
                         camera_votes_json TEXT NOT NULL,
                         anchor_time TEXT,
@@ -177,6 +178,14 @@ class HistoryRepository:
                     )
                     """
                 )
+                columns = {
+                    row["name"]
+                    for row in connection.execute("PRAGMA table_info(cap_line_history_v3)").fetchall()
+                }
+                if "camera_label" not in columns:
+                    connection.execute(
+                        "ALTER TABLE cap_line_history_v3 ADD COLUMN camera_label TEXT"
+                    )
                 connection.execute(
                     """
                     CREATE INDEX IF NOT EXISTS idx_cap_line_history_v3_recorded_at
@@ -191,10 +200,10 @@ class HistoryRepository:
                     """
                     INSERT INTO cap_line_history_v3 (
                         recorded_at, runtime_event_id, result, final_class_name,
-                        final_score, decision_source, camera_labels_json,
+                        final_score, decision_source, camera_label, camera_labels_json,
                         camera_votes_json, anchor_time, trigger_delay_s
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         record.recorded_at,
@@ -203,6 +212,7 @@ class HistoryRepository:
                         record.final_class_name,
                         record.final_score,
                         record.decision_source,
+                        getattr(record, "camera_label", None),
                         json.dumps(record.camera_labels),
                         json.dumps(record.camera_votes),
                         record.anchor_time,
@@ -215,7 +225,7 @@ class HistoryRepository:
             rows = connection.execute(
                 """
                 SELECT recorded_at, runtime_event_id, result, final_class_name,
-                       final_score, decision_source, anchor_time, trigger_delay_s
+                       final_score, decision_source, camera_label, anchor_time, trigger_delay_s
                 FROM cap_line_history_v3
                 ORDER BY recorded_at DESC, id DESC
                 LIMIT ?
@@ -580,8 +590,8 @@ if PYQT_AVAILABLE:
 
         def _build_history_tab(self) -> None:
             layout = QVBoxLayout(self.history_tab)
-            self.events_table = QTableWidget(0, 6)
-            self.events_table.setHorizontalHeaderLabels(["Recorded", "Event", "Result", "Class", "Score", "Source"])
+            self.events_table = QTableWidget(0, 7)
+            self.events_table.setHorizontalHeaderLabels(["Recorded", "Event", "Camera", "Result", "Class", "Score", "Source"])
             layout.addWidget(self.events_table)
 
         def _build_timing_tab(self) -> None:
@@ -745,6 +755,7 @@ if PYQT_AVAILABLE:
                 values = [
                     row.get("recorded_at"),
                     row.get("runtime_event_id"),
+                    row.get("camera_label"),
                     row.get("result"),
                     row.get("final_class_name"),
                     _format_float(row.get("final_score")),

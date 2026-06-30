@@ -147,6 +147,7 @@ class DetectionHistoryRecord:
     camera_votes: dict[int, dict[str, object]]
     anchor_time: str | None
     trigger_delay_s: float | None
+    camera_label: str | None = None
 
 
 @dataclass

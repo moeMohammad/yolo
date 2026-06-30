@@ -763,6 +763,34 @@ def _frame_size(frame) -> tuple[int, int]:
     return int(shape[1]), int(shape[0])
 
 
+def _final_class_id(final_class_name: str | None) -> int | None:
+    if final_class_name is None:
+        return None
+    for class_id in (0, 1):
+        if class_name(class_id) == final_class_name:
+            return class_id
+    return None
+
+
+def _history_camera_label(decision, config: RuntimeConfig) -> str | None:
+    final_class_id = _final_class_id(decision.final_class_name)
+    if final_class_id is None:
+        return None
+    matching_votes = []
+    for camera_index, vote in decision.camera_votes.items():
+        if vote.class_id != final_class_id:
+            continue
+        score = -1.0 if vote.score is None else float(vote.score)
+        matching_votes.append((score, -int(camera_index), int(camera_index)))
+    if not matching_votes:
+        return None
+    _score, _tie_breaker, camera_index = max(matching_votes)
+    camera_labels = list(config.cameras)
+    if 0 <= camera_index < len(camera_labels):
+        return str(camera_labels[camera_index])
+    return str(camera_index)
+
+
 def _record_history(event_id: int, decision, clock: Clock, config: RuntimeConfig) -> DetectionHistoryRecord:
     return DetectionHistoryRecord(
         recorded_at=clock.format(decision.decision_ready_time),
@@ -782,6 +810,7 @@ def _record_history(event_id: int, decision, clock: Clock, config: RuntimeConfig
         },
         anchor_time=clock.format(decision.anchor_time),
         trigger_delay_s=decision.trigger_delay_s,
+        camera_label=_history_camera_label(decision, config),
     )
 
 

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import tempfile
 import threading
 import time
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import cap_line_ui_v3
 import cap_line_v3.runtime as runtime
@@ -28,7 +30,7 @@ from cap_line_v3.runtime import (
     run_detection,
 )
 from cap_line_v3.types import CapturedFrame, DetectionPacket, FramePair, PairDropStats, TrackObservation
-from cap_line_ui_v3 import ConfigSettingsStore, DEFAULT_SETTINGS_PATH
+from cap_line_ui_v3 import ConfigSettingsStore, DEFAULT_SETTINGS_PATH, HistoryRepository
 
 
 class ShapeFrame:
@@ -164,6 +166,108 @@ class CapLineV3ReliabilityTests(unittest.TestCase):
             config = ConfigSettingsStore(settings_path).load()
 
         self.assertEqual(config.model, "./custom/dirtv2.onnx")
+
+    def test_history_repository_persists_camera_label_for_new_records(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repository = HistoryRepository(str(Path(temp_dir) / "history.sqlite3"))
+            record = SimpleNamespace(
+                recorded_at="2026-06-29T10:00:00.000+04:00",
+                runtime_event_id=42,
+                result="trigger",
+                final_class_name="dirt_defect",
+                final_score=0.5,
+                decision_source="camera_defect_vote",
+                camera_label="right-camera",
+                camera_labels=["left-camera", "right-camera"],
+                camera_votes={1: {"class_id": 1, "score": 0.5, "observation_count": 1}},
+                anchor_time=None,
+                trigger_delay_s=None,
+            )
+
+            repository.insert_record(record)
+            rows = repository.fetch_events()
+
+        self.assertEqual(rows[0]["camera_label"], "right-camera")
+
+    def test_history_repository_migrates_existing_rows_with_null_camera_label(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_path = Path(temp_dir) / "history.sqlite3"
+            connection = sqlite3.connect(db_path)
+            with connection:
+                connection.execute(
+                    """
+                    CREATE TABLE cap_line_history_v3 (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        recorded_at TEXT NOT NULL,
+                        runtime_event_id INTEGER NOT NULL,
+                        result TEXT NOT NULL,
+                        final_class_name TEXT,
+                        final_score REAL,
+                        decision_source TEXT NOT NULL,
+                        camera_labels_json TEXT NOT NULL,
+                        camera_votes_json TEXT NOT NULL,
+                        anchor_time TEXT,
+                        trigger_delay_s REAL
+                    )
+                    """
+                )
+                connection.execute(
+                    """
+                    INSERT INTO cap_line_history_v3 (
+                        recorded_at, runtime_event_id, result, final_class_name,
+                        final_score, decision_source, camera_labels_json,
+                        camera_votes_json, anchor_time, trigger_delay_s
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        "2026-06-29T09:00:00.000+04:00",
+                        7,
+                        "skip",
+                        "undefected",
+                        0.91,
+                        "below_reject_threshold",
+                        json.dumps(["left-camera", "right-camera"]),
+                        json.dumps({0: {"class_id": 0, "score": 0.91, "observation_count": 1}}),
+                        None,
+                        None,
+                    ),
+                )
+            connection.close()
+
+            repository = HistoryRepository(str(db_path))
+            migrated_connection = sqlite3.connect(db_path)
+            columns = {
+                row[1]
+                for row in migrated_connection.execute("PRAGMA table_info(cap_line_history_v3)").fetchall()
+            }
+            migrated_connection.close()
+            rows = repository.fetch_events()
+
+        self.assertIn("camera_label", columns)
+        self.assertIsNone(rows[0]["camera_label"])
+
+    def test_record_history_uses_camera_label_for_matching_final_vote(self):
+        config = replace(RuntimeConfig.defaults(), cameras=("left-camera", "right-camera"))
+        clock = runtime.Clock(lambda: 10.0)
+        decision = SimpleNamespace(
+            result="trigger",
+            final_class_name="dirt_defect",
+            final_score=0.5,
+            decision_source="camera_defect_vote",
+            camera_votes={
+                0: SimpleNamespace(class_id=0, score=0.99, observation_count=1),
+                1: SimpleNamespace(class_id=1, score=0.5, observation_count=1),
+            },
+            anchor_time=10.0,
+            decision_ready_time=10.0,
+            trigger_delay_s=0.0,
+            requested_fire_time=10.0,
+        )
+
+        record = runtime._record_history(1, decision, clock, config)
+
+        self.assertEqual(record.camera_label, "right-camera")
 
     def test_prediction_text_formats_class_and_confidence(self):
         format_prediction_text = getattr(cap_line_ui_v3, "format_prediction_text", None)
