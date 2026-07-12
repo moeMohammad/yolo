@@ -3,7 +3,8 @@
 
 Slim by design: live dual-camera preview, start/stop, a status bar (GPIO backend,
 per-camera FPS / inference ms, run state), session counters, the slim settings
-panel, a manual test-fire button, and a recent-rejects table backed by sqlite.
+panel, a manual test-fire button (routed through the running runtime's own pin
+while detection is active), and a recent-rejects table backed by sqlite.
 """
 
 from __future__ import annotations
@@ -53,6 +54,12 @@ def pulse_test_fire(
 
     Honors ``gpio_backend`` + ``simulate_gpio`` and returns the backend name
     that was used.
+
+    Only for use while detection is stopped: it opens (and on close tears down)
+    its own GPIO handle. Jetson.GPIO ``cleanup`` is process-wide per channel, so
+    doing this while the runtime holds the same pin would break every later real
+    fire. While running, the UI routes test fires through the runtime instead
+    (see ``DetectionAppController.request_test_fire``).
     """
 
     if pin_factory is None or config.simulate_gpio:
@@ -109,11 +116,22 @@ class HistoryRepository:
 
     def _initialize(self) -> None:
         with self._connection:
+            existing = self._connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'cap_line_history_v6'"
+            ).fetchone()
+            # The original v6 schema keyed rows on event_id alone, but event ids
+            # restart at 1 on every run, so each run silently overwrote the
+            # previous run's history. Migrate to (event_id, recorded_at).
+            legacy = existing is not None and "event_id INTEGER NOT NULL UNIQUE" in (existing["sql"] or "")
+            if legacy:
+                self._connection.execute(
+                    "ALTER TABLE cap_line_history_v6 RENAME TO cap_line_history_v6_legacy"
+                )
             self._connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS cap_line_history_v6 (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    event_id INTEGER NOT NULL UNIQUE,
+                    event_id INTEGER NOT NULL,
                     recorded_at TEXT NOT NULL,
                     result TEXT NOT NULL,
                     class_name TEXT,
@@ -122,10 +140,26 @@ class HistoryRepository:
                     flagged_cameras_json TEXT NOT NULL,
                     requested_fire_time TEXT,
                     actual_fire_time TEXT,
-                    fire_suppressed INTEGER NOT NULL DEFAULT 0
+                    fire_suppressed INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE (event_id, recorded_at)
                 )
                 """
             )
+            if legacy:
+                self._connection.execute(
+                    """
+                    INSERT OR IGNORE INTO cap_line_history_v6 (
+                        event_id, recorded_at, result, class_name, confidence,
+                        cameras_json, flagged_cameras_json, requested_fire_time,
+                        actual_fire_time, fire_suppressed
+                    )
+                    SELECT event_id, recorded_at, result, class_name, confidence,
+                           cameras_json, flagged_cameras_json, requested_fire_time,
+                           actual_fire_time, fire_suppressed
+                    FROM cap_line_history_v6_legacy
+                    """
+                )
+                self._connection.execute("DROP TABLE cap_line_history_v6_legacy")
             self._connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_cap_line_history_v6_recorded_at "
                 "ON cap_line_history_v6 (recorded_at DESC)"
@@ -141,8 +175,7 @@ class HistoryRepository:
                     fire_suppressed
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(event_id) DO UPDATE SET
-                    recorded_at=excluded.recorded_at,
+                ON CONFLICT(event_id, recorded_at) DO UPDATE SET
                     result=excluded.result,
                     class_name=excluded.class_name,
                     confidence=excluded.confidence,
@@ -202,6 +235,7 @@ class DetectionAppController:
         self._message_queue: queue.Queue[tuple[str, object]] = queue.Queue()
         self._preview_lock = threading.Lock()
         self._latest_preview = None
+        self._test_fire_requested = threading.Event()
 
     def start(self) -> bool:
         if self.is_running:
@@ -209,6 +243,7 @@ class DetectionAppController:
         config = self.config_factory()
         self.stop_event = threading.Event()
         self._message_queue = queue.Queue()
+        self._test_fire_requested.clear()  # never carry a stale request into a new run
         with self._preview_lock:
             self._latest_preview = None
         self.is_running = True
@@ -226,6 +261,26 @@ class DetectionAppController:
         self.status_text = "Stopping..."
         return True
 
+    def request_test_fire(self) -> bool:
+        """Ask the running runtime to pulse its own pin once.
+
+        Returns False when detection is not running (the caller should pulse a
+        standalone pin via ``pulse_test_fire`` instead). Routing through the
+        runtime avoids opening a second GPIO handle for the same channel, which
+        on Jetson.GPIO tears the runtime's pin down when it closes.
+        """
+
+        if not self.is_running:
+            return False
+        self._test_fire_requested.set()
+        return True
+
+    def _consume_test_fire_request(self) -> bool:
+        if self._test_fire_requested.is_set():
+            self._test_fire_requested.clear()
+            return True
+        return False
+
     def _worker_main(self, config: RuntimeConfig) -> None:
         try:
             callbacks = RuntimeCallbacks(
@@ -233,6 +288,7 @@ class DetectionAppController:
                 history_callback=lambda record: self._message_queue.put(("history", record)),
                 performance_callback=lambda snapshot: self._message_queue.put(("performance", snapshot)),
                 log_fn=print,
+                test_fire_poll=self._consume_test_fire_request,
             )
             self.detector_runner(config, callbacks, self.stop_event)
         except Exception as exc:
@@ -339,6 +395,7 @@ if PYQT_AVAILABLE:
             self.controller.config_factory = self._build_runtime_config
             self.metric_labels: dict[str, QLabel] = {}
             self._closing_after_stop = False
+            self._test_fire_inflight = False
             self.setWindowTitle("Cap Line Inspector v6")
             self.resize(1380, 880)
             self._build_ui()
@@ -563,7 +620,17 @@ if PYQT_AVAILABLE:
             self._sync_controls()
 
         def _test_fire(self) -> None:
+            # While detection runs, fire through the runtime's own scheduler/pin.
+            # A second GPIO handle on the same channel would pump air fine but,
+            # on close, Jetson.GPIO cleanup tears down the runtime's pin too —
+            # after which real reject fires fail silently.
+            if self.controller.request_test_fire():
+                print("[TEST FIRE] requested via the running runtime")
+                return
+            if self._test_fire_inflight:
+                return
             config = self._build_runtime_config()
+            self._test_fire_inflight = True
 
             def _worker() -> None:
                 try:
@@ -572,6 +639,8 @@ if PYQT_AVAILABLE:
                 except Exception as exc:  # noqa: BLE001 - surface but never crash the UI
                     traceback.print_exc()
                     print(f"[TEST FIRE][ERROR] {exc}")
+                finally:
+                    self._test_fire_inflight = False
 
             threading.Thread(target=_worker, name="cap-line-v6-test-fire", daemon=True).start()
 

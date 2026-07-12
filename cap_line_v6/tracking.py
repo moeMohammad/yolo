@@ -3,7 +3,10 @@
 Each camera is tracked completely independently (there is no cross-camera pixel
 matching in v6 - the two cameras view the cap from different angles). A track
 accumulates frames of one physical cap as it moves through the field of view and
-finishes when it goes unmatched for ``track_timeout_ms``.
+finishes when it goes unmatched for ``track_timeout_ms``. Association is greedy
+IoU first, then a velocity-gated centroid fallback for fast motion — gated so
+the next cap entering right behind a departed one starts a fresh track instead
+of silently extending (and immortalizing) the old one.
 
 Decision rule is pure single-frame "defect wins" (OR): a single ``dirt_defect``
 frame makes the whole track defective. Detections are already confidence-filtered
@@ -22,9 +25,18 @@ from .types import Box
 
 # When boxes from consecutive frames don't overlap (a fast cap on a fast belt),
 # fall back to nearest-centroid association if the gap is within this many box
-# widths. Generous enough for fast motion, tight enough not to bridge the spaced
-# out next cap.
+# widths. Only used while a track has no velocity estimate yet (single
+# observation); afterwards the predictive gate below takes over.
 CENTROID_MATCH_GATE = 2.0
+
+# Once a track has a velocity estimate, the fallback matches against the
+# *predicted* center instead of the last one, so the acceptance gate can be much
+# tighter. Anything further off the prediction is a different cap — most
+# importantly the next cap entering right behind one that just left view, which
+# the loose centroid gate used to absorb into the old track (chaining a
+# continuous feed of caps into one track that never times out, so no cap event
+# and no fire ever happens).
+PREDICTED_MATCH_GATE = 0.8
 
 
 def box_area(box: Box) -> float:
@@ -69,8 +81,14 @@ class Track:
     is_defect: bool = False
     best_defect_conf: float = 0.0
     best_undefected_conf: float = 0.0
+    velocity: tuple[float, float] | None = None  # px/s, from the last two observations
 
     def observe(self, box: Box, timestamp: float) -> None:
+        dt = float(timestamp) - self.last_seen
+        if dt > 0.0:
+            prev_cx, prev_cy = box_center(self.last_box)
+            new_cx, new_cy = box_center(box)
+            self.velocity = ((new_cx - prev_cx) / dt, (new_cy - prev_cy) / dt)
         self.last_seen = float(timestamp)
         self.last_box = box
         self.frame_count += 1
@@ -130,18 +148,20 @@ class CameraTracker:
             matched_dets.add(di)
 
         # 2) Nearest-centroid fallback for detections IoU missed (fast motion).
+        #    Velocity-gated: with a motion estimate the detection must sit near
+        #    the *predicted* center, so the next cap entering behind a departed
+        #    one starts its own track instead of extending the old one.
         remaining_tracks = [ti for ti in range(len(self._tracks)) if ti not in matched_tracks]
         remaining_dets = [di for di in range(len(boxes)) if di not in matched_dets]
         if remaining_tracks and remaining_dets:
-            dist_pairs = [
-                (normalized_center_distance(self._tracks[ti].last_box, boxes[di]), ti, di)
-                for ti in remaining_tracks
-                for di in remaining_dets
-            ]
-            dist_pairs.sort(key=lambda item: item[0])
-            for distance, ti, di in dist_pairs:
-                if distance > CENTROID_MATCH_GATE:
-                    break
+            candidates = []
+            for ti in remaining_tracks:
+                for di in remaining_dets:
+                    distance, gate = self._fallback_candidate(self._tracks[ti], boxes[di], timestamp)
+                    if distance <= gate:
+                        candidates.append((distance, ti, di))
+            candidates.sort(key=lambda item: item[0])
+            for distance, ti, di in candidates:
                 if ti in matched_tracks or di in matched_dets:
                     continue
                 self._tracks[ti].observe(boxes[di], timestamp)
@@ -165,6 +185,26 @@ class CameraTracker:
                     best_undefected_conf=float(box[4]) if int(box[5]) != DEFECT_CLASS_ID else 0.0,
                 )
             )
+
+    def _fallback_candidate(self, track: Track, box: Box, timestamp: float) -> tuple[float, float]:
+        """Normalized distance and acceptance gate for a non-IoU fallback match."""
+
+        if track.velocity is None:
+            return normalized_center_distance(track.last_box, box), CENTROID_MATCH_GATE
+        dt = max(0.0, float(timestamp) - track.last_seen)
+        last_cx, last_cy = box_center(track.last_box)
+        predicted_cx = last_cx + track.velocity[0] * dt
+        predicted_cy = last_cy + track.velocity[1] * dt
+        det_cx, det_cy = box_center(box)
+        scale = max(
+            1.0,
+            track.last_box[2] - track.last_box[0],
+            track.last_box[3] - track.last_box[1],
+            box[2] - box[0],
+            box[3] - box[1],
+        )
+        distance = math.hypot(det_cx - predicted_cx, det_cy - predicted_cy) / scale
+        return distance, PREDICTED_MATCH_GATE
 
     def collect_finished(self, now: float) -> list[Track]:
         """Return and remove tracks unmatched for >= ``track_timeout_s``."""

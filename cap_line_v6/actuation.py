@@ -4,6 +4,10 @@ Copied (self-contained) from the v3 actuation pattern. The scheduler keeps a hea
 keyed by ``requested_fire_time`` and pulses the solenoid on a dedicated thread so
 fires happen on time regardless of what the capture/inference threads are doing.
 ``time_fn``/``sleep_fn`` are injectable so timing is deterministic in tests.
+
+A failed pulse (GPIO error, torn-down pin, callback bug) is logged and skipped —
+it must never kill the scheduler thread, because a dead scheduler silently stops
+every future fire while the rest of the runtime keeps running.
 """
 
 from __future__ import annotations
@@ -116,21 +120,30 @@ class RejectScheduler:
             if cancelled:
                 continue
             trigger_on = float(self.time_fn())
-            self.pin.on()
-            self.sleep_fn(self.trigger_duration)
-            self.pin.off()
+            try:
+                self.pin.on()
+                try:
+                    self.sleep_fn(self.trigger_duration)
+                finally:
+                    self.pin.off()
+            except Exception as exc:
+                self.log_fn(f"[REJECT][ERROR] pulse for event={event_id} failed: {exc}")
+                continue
             trigger_off = float(self.time_fn())
             self._last_fire_time = trigger_on
             if callback is not None:
-                callback(
-                    RejectExecution(
-                        event_id=event_id,
-                        queued_at=queued_at,
-                        requested_fire_time=requested_fire_time,
-                        trigger_on_time=trigger_on,
-                        trigger_off_time=trigger_off,
+                try:
+                    callback(
+                        RejectExecution(
+                            event_id=event_id,
+                            queued_at=queued_at,
+                            requested_fire_time=requested_fire_time,
+                            trigger_on_time=trigger_on,
+                            trigger_off_time=trigger_off,
+                        )
                     )
-                )
+                except Exception as exc:
+                    self.log_fn(f"[REJECT][ERROR] completion callback for event={event_id} failed: {exc}")
 
     def close(self) -> None:
         with self._condition:

@@ -64,9 +64,17 @@ class PerfSnapshot:
 
 @dataclass(frozen=True)
 class RuntimeCallbacks:
-    """Hooks the UI (or a test) injects into the runtime."""
+    """Hooks the UI (or a test) injects into the runtime.
+
+    ``test_fire_poll`` is polled by the coordinator loop; returning True fires
+    one manual pulse through the runtime's own ``RejectScheduler``/pin. This is
+    how the UI's Test Fire button works while detection is running — opening a
+    second GPIO handle for the same pin would tear the runtime's pin down when
+    it closes (Jetson.GPIO cleanup is process-wide per channel).
+    """
 
     preview_callback: Callable[[object], None] | None = None  # composite BGR frame
     history_callback: Callable[[CapEventRecord], None] | None = None
     performance_callback: Callable[[PerfSnapshot], None] | None = None
     log_fn: Callable[..., None] = print
+    test_fire_poll: Callable[[], bool] | None = None

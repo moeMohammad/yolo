@@ -485,6 +485,11 @@ def run_detection(
             now = clock.monotonic()
             manager.flush_expired(now)
 
+            if callbacks.test_fire_poll is not None and callbacks.test_fire_poll():
+                # Manual operator pulse through the runtime's own pin (event 0).
+                log_fn(f"[TEST FIRE] manual pulse via {scheduler.backend_name}")
+                scheduler.enqueue(0, now)
+
             if preview_enabled and not preview_broken and (now - last_preview) >= preview_interval_s:
                 last_preview = now
                 try:
