@@ -826,13 +826,29 @@ def test_history_repository_keeps_rows_across_runs():
     repository.upsert_record(first_run)
     # The same event re-emitted (fire completion) updates its row in place.
     repository.upsert_record(replace(first_run, actual_fire_time="2026-07-12T10:00:00.100"))
-    rows = repository.fetch_rejects()
+    rows = repository.fetch_history()
     assert len(rows) == 1
     assert rows[0]["actual_fire_time"] == "2026-07-12T10:00:00.100"
 
     # A new run restarts event ids at 1: it must add a row, not overwrite.
     repository.upsert_record(replace(first_run, recorded_at="2026-07-12T11:00:00.000", confidence=0.8))
-    assert len(repository.fetch_rejects()) == 2
+    assert len(repository.fetch_history()) == 2
+
+    # Pass caps are logged too: the history is one row per physical cap.
+    repository.upsert_record(
+        replace(
+            first_run,
+            event_id=2,
+            recorded_at="2026-07-12T11:00:01.000",
+            result="pass",
+            class_name="undefected",
+            confidence=0.95,
+            flagged_cameras=[],
+        )
+    )
+    rows = repository.fetch_history()
+    assert len(rows) == 3
+    assert rows[0]["result"] == "pass"
 
 
 def test_history_repository_migrates_legacy_event_id_unique_schema(tmp_path):
@@ -866,7 +882,7 @@ def test_history_repository_migrates_legacy_event_id_unique_schema(tmp_path):
     connection.close()
 
     repository = HistoryRepository(db_path)
-    assert len(repository.fetch_rejects()) == 1  # legacy rows preserved
+    assert len(repository.fetch_history()) == 1  # legacy rows preserved
 
     # A fresh run's cap 1 must coexist with the legacy cap 1.
     repository.upsert_record(
@@ -880,4 +896,4 @@ def test_history_repository_migrates_legacy_event_id_unique_schema(tmp_path):
             flagged_cameras=[0],
         )
     )
-    assert len(repository.fetch_rejects()) == 2
+    assert len(repository.fetch_history()) == 2

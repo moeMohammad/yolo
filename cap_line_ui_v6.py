@@ -4,7 +4,8 @@
 Slim by design: live dual-camera preview, start/stop, a status bar (GPIO backend,
 per-camera FPS / inference ms, run state), session counters, the slim settings
 panel, a manual test-fire button (routed through the running runtime's own pin
-while detection is active), and a recent-rejects table backed by sqlite.
+while detection is active), and a per-cap history table backed by sqlite (every
+cap, pass and reject, with its final merged decision).
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from cap_line_v6.types import RuntimeCallbacks
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_SETTINGS_PATH = str(SCRIPT_DIR / "cap_line_ui_v6_settings.json")
-REJECT_LIMIT = 100
+HISTORY_LIMIT = 200
 LIVE_POLL_INTERVAL_MS = 16
 TRIGGER_PIN_LABEL = "Trigger Pin (Jetson BOARD, e.g. 7 = GPIO09)"
 
@@ -199,14 +200,14 @@ class HistoryRepository:
                 ),
             )
 
-    def fetch_rejects(self, limit: int = REJECT_LIMIT) -> list[dict[str, object]]:
+    def fetch_history(self, limit: int = HISTORY_LIMIT) -> list[dict[str, object]]:
+        """Most recent caps first — every cap (pass and reject), one row per cap."""
         rows = self._connection.execute(
             """
             SELECT event_id, recorded_at, result, class_name, confidence,
                    cameras_json, flagged_cameras_json, requested_fire_time, actual_fire_time,
                    fire_suppressed
             FROM cap_line_history_v6
-            WHERE result = 'reject'
             ORDER BY recorded_at DESC, id DESC
             LIMIT ?
             """,
@@ -340,7 +341,7 @@ class DetectionAppController:
 
 try:
     from PyQt6.QtCore import QTimer, Qt
-    from PyQt6.QtGui import QCloseEvent, QImage, QPixmap
+    from PyQt6.QtGui import QCloseEvent, QColor, QImage, QPixmap
     from PyQt6.QtWidgets import (
         QApplication,
         QCheckBox,
@@ -400,7 +401,7 @@ if PYQT_AVAILABLE:
             self.resize(1380, 880)
             self._build_ui()
             self._load_config(self._loaded_config)
-            self._load_rejects_table()
+            self._load_history_table()
             self._sync_controls()
             self.poll_timer = QTimer(self)
             self.poll_timer.setInterval(LIVE_POLL_INTERVAL_MS)
@@ -423,24 +424,17 @@ if PYQT_AVAILABLE:
             self.tabs = QTabWidget()
             self.live_tab = QWidget()
             self.config_tab = QWidget()
-            self.rejects_tab = QWidget()
+            self.history_tab = QWidget()
             self.tabs.addTab(self.live_tab, "Live")
             self.tabs.addTab(self.config_tab, "Config")
-            self.tabs.addTab(self.rejects_tab, "Rejects")
+            self.tabs.addTab(self.history_tab, "Cap Log")
             root.addWidget(self.tabs)
             self._build_live_tab()
             self._build_config_tab()
-            self._build_rejects_tab()
+            self._build_history_tab()
 
         def _build_live_tab(self) -> None:
             layout = QVBoxLayout(self.live_tab)
-            # Final per-cap verdict: the merged cross-camera classification the
-            # trigger decision is based on, fed only by per-cap history records.
-            self.verdict_label = QLabel("Waiting for the first cap")
-            self.verdict_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.verdict_label.setMinimumHeight(64)
-            self._style_verdict(None)
-            layout.addWidget(self.verdict_label)
             splitter = QSplitter(Qt.Orientation.Horizontal)
             layout.addWidget(splitter, 1)
             preview_group = QGroupBox("Dual-Camera Preview")
@@ -465,6 +459,18 @@ if PYQT_AVAILABLE:
             self.test_fire_button = QPushButton("Test Fire")
             self.test_fire_button.clicked.connect(self._test_fire)
             side_layout.addWidget(self.test_fire_button)
+
+            # Final per-cap verdict: the merged cross-camera decision the air
+            # fire is based on, fed only by per-cap history records.
+            verdict_group = QGroupBox("Last Cap Decision")
+            verdict_layout = QVBoxLayout(verdict_group)
+            self.verdict_label = QLabel("Waiting for the first cap")
+            self.verdict_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.verdict_label.setWordWrap(True)
+            self.verdict_label.setMinimumHeight(84)
+            self._style_verdict(None)
+            verdict_layout.addWidget(self.verdict_label)
+            side_layout.addWidget(verdict_group)
 
             counters = QGroupBox("Session")
             counters_layout = QGridLayout(counters)
@@ -541,13 +547,13 @@ if PYQT_AVAILABLE:
             layout.addWidget(group)
             layout.addStretch(1)
 
-        def _build_rejects_tab(self) -> None:
-            layout = QVBoxLayout(self.rejects_tab)
-            self.rejects_table = QTableWidget(0, 6)
-            self.rejects_table.setHorizontalHeaderLabels(
-                ["Time", "Result", "Class", "Confidence", "Camera(s)", "Fire Time"]
+        def _build_history_tab(self) -> None:
+            layout = QVBoxLayout(self.history_tab)
+            self.history_table = QTableWidget(0, 7)
+            self.history_table.setHorizontalHeaderLabels(
+                ["Cap", "Time", "Result", "Class", "Confidence", "Camera(s)", "Fire Time"]
             )
-            layout.addWidget(self.rejects_table)
+            layout.addWidget(self.history_table)
 
         # -- config <-> widgets --------------------------------------------
 
@@ -662,7 +668,7 @@ if PYQT_AVAILABLE:
         # -- final verdict banner --------------------------------------------
 
         def _style_verdict(self, result: str | None) -> None:
-            base = "font-size: 22pt; font-weight: 800; border-radius: 6px; padding: 8px;"
+            base = "font-size: 15pt; font-weight: 800; border-radius: 6px; padding: 8px;"
             if result == "reject":
                 colors = "background-color: #b71c1c; color: white;"
             elif result == "pass":
@@ -674,11 +680,11 @@ if PYQT_AVAILABLE:
         def _update_verdict(self, record) -> None:
             cameras = ",".join(str(index) for index in record.flagged_cameras or record.cameras) or "-"
             text = (
-                f"CAP {record.event_id}: {record.result.upper()} — "
+                f"CAP {record.event_id}: {record.result.upper()}\n"
                 f"{format_prediction_text(record.class_name, record.confidence, digits=2)} (cam {cameras})"
             )
             if record.fire_suppressed:
-                text += " · fire deduped"
+                text += "\nfire deduped"
             self.verdict_label.setText(text)
             self._style_verdict(record.result)
 
@@ -690,7 +696,7 @@ if PYQT_AVAILABLE:
                 self._update_preview(changes["latest_preview"])
             if changes["history_records"]:
                 self._update_verdict(changes["history_records"][-1])
-                self._load_rejects_table()
+                self._load_history_table()
             if changes["latest_performance"] is not None:
                 self._update_performance(changes["latest_performance"])
             if changes["error"] is not None or changes["stopped"]:
@@ -719,26 +725,39 @@ if PYQT_AVAILABLE:
             self.metric_labels["capture_fps"].setText(_format_tuple(snapshot.capture_fps_by_camera))
             self.metric_labels["inference_ms"].setText(_format_tuple(snapshot.inference_ms_by_camera))
 
-        def _load_rejects_table(self) -> None:
-            rows = self.repository.fetch_rejects()
-            self.rejects_table.setRowCount(len(rows))
+        def _load_history_table(self) -> None:
+            rows = self.repository.fetch_history()
+            self.history_table.setRowCount(len(rows))
             for row_index, row in enumerate(rows):
+                is_reject = row.get("result") == "reject"
+                # Rejects show the cameras that flagged the defect; pass caps
+                # show every camera that saw the cap.
+                cameras_key = "flagged_cameras_json" if is_reject else "cameras_json"
                 try:
-                    cameras = ", ".join(str(value) for value in json.loads(row.get("flagged_cameras_json") or "[]"))
+                    cameras = ", ".join(str(value) for value in json.loads(row.get(cameras_key) or "[]"))
                 except (TypeError, ValueError):
                     cameras = "-"
+                fire_time = "-"
+                if is_reject:
+                    fire_time = (
+                        row.get("actual_fire_time")
+                        or row.get("requested_fire_time")
+                        or ("deduped" if row.get("fire_suppressed") else "-")
+                    )
                 values = [
+                    row.get("event_id"),
                     row.get("recorded_at"),
                     row.get("result"),
                     row.get("class_name"),
                     _format_float(row.get("confidence")),
                     cameras or "-",
-                    row.get("actual_fire_time")
-                    or row.get("requested_fire_time")
-                    or ("deduped" if row.get("fire_suppressed") else "-"),
+                    fire_time,
                 ]
                 for column, value in enumerate(values):
-                    self.rejects_table.setItem(row_index, column, QTableWidgetItem("" if value is None else str(value)))
+                    item = QTableWidgetItem("" if value is None else str(value))
+                    if column == 2:
+                        item.setForeground(QColor("#d32f2f") if is_reject else QColor("#2e7d32"))
+                    self.history_table.setItem(row_index, column, item)
 
         def closeEvent(self, event: QCloseEvent) -> None:
             if self.controller.is_running:
