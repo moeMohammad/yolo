@@ -1,10 +1,11 @@
 """v6 runtime: one capture+inference loop per camera, one shared cap manager.
 
-Each camera runs in its own thread (``CameraWorker``): read frame -> infer ->
-update that camera's tracker -> hand finished tracks to the shared
-``CapEventManager``. A lightweight coordinator loop on the calling thread drives
-the composite preview, periodic performance snapshots, and the cap-event merge
-flush, and tears everything down cleanly when ``stop_event`` is set.
+Each camera has a continuously-draining capture thread and a one-slot latest-
+frame handoff to its inference worker. This prevents slow inference from walking
+through buffered, already-departed cap frames. Inference updates that camera's
+tracker and hands only finished, physically-qualified tracks to the shared
+``CapEventManager``. A lightweight coordinator loop drives preview, metrics,
+event flushing, and fail-safe shutdown.
 
 There is deliberately no frame pairing, anchor geometry, prediction or snapshot
 machinery here - the only cross-camera logic is the de-dup inside the manager.
@@ -22,7 +23,7 @@ from typing import Callable
 from .actuation import NullGPIOOutputPin, RejectScheduler
 from .config import RuntimeConfig, class_name, validate_config
 from .decision import CapEventManager
-from .model import create_onnx_session, postprocess, preprocess, resolve_imgsz, resolve_model_path
+from .model import create_onnx_session, deduplicate_boxes, postprocess, preprocess, resolve_imgsz, resolve_model_path
 from .tracking import CameraTracker
 from .types import Box, CapturedFrame, PerfSnapshot, RuntimeCallbacks
 
@@ -196,11 +197,40 @@ def mirror_frame_horizontal(frame):
         return frame
 
 
-def draw_boxes(frame, boxes: tuple[Box, ...]):
-    """Green for undefected, red for dirt_defect, with a class+confidence label."""
+def draw_boxes(
+    frame,
+    boxes: tuple[Box, ...],
+    *,
+    presence_line_axis: str | None = None,
+    presence_line_ratio: float | None = None,
+    presence_direction: str = "positive",
+):
+    """Draw detections plus the physical-presence gate used for actuation."""
 
     import cv2
 
+    if presence_line_axis in {"x", "y"} and presence_line_ratio is not None:
+        try:
+            height, width = frame.shape[:2]
+            if presence_line_axis == "x":
+                coordinate = int(round(width * float(presence_line_ratio)))
+                start, end = (coordinate, 0), (coordinate, height - 1)
+            else:
+                coordinate = int(round(height * float(presence_line_ratio)))
+                start, end = (0, coordinate), (width - 1, coordinate)
+            cv2.line(frame, start, end, (255, 255, 0), 2)
+            direction_marker = {"positive": "+", "negative": "-"}.get(presence_direction, "+/-")
+            cv2.putText(
+                frame,
+                f"PRESENCE GATE {presence_line_axis}{direction_marker}",
+                (8, 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 255, 0),
+                1,
+            )
+        except Exception:
+            pass
     for box in boxes:
         x1, y1, x2, y2, conf, cls = box
         color = (0, 0, 255) if int(cls) == 1 else (0, 200, 0)
@@ -270,6 +300,12 @@ class SharedRuntimeState:
             self._processed[index] += 1
             self._inference_ms[index] = inference_ms
 
+    def clear_boxes(self, index: int) -> None:
+        """Clear stale overlays after a read/inference failure."""
+
+        with self._lock:
+            self._boxes[index] = tuple()
+
     def latest_frames(self) -> tuple[list[object | None], list[tuple[Box, ...]]]:
         with self._lock:
             return list(self._frames), list(self._boxes)
@@ -291,6 +327,8 @@ class CameraWorker:
         input_name: str,
         model_imgsz: int,
         reject_threshold: float,
+        duplicate_iou_threshold: float,
+        max_frame_age_s: float,
         mirror_horizontal: bool,
         tracker: CameraTracker,
         manager: CapEventManager,
@@ -308,6 +346,8 @@ class CameraWorker:
         self.input_name = input_name
         self.model_imgsz = int(model_imgsz)
         self.reject_threshold = float(reject_threshold)
+        self.duplicate_iou_threshold = float(duplicate_iou_threshold)
+        self.max_frame_age_s = max(0.001, float(max_frame_age_s))
         self.mirror_horizontal = bool(mirror_horizontal)
         self.tracker = tracker
         self.manager = manager
@@ -319,13 +359,57 @@ class CameraWorker:
         self.sleep_fn = sleep_fn
         self.log_fn = log_fn
         self._sequence = 0
-        self._thread = threading.Thread(target=self._run, name=f"cap-line-v6-camera-{self.camera_index}", daemon=True)
+        self._capture_condition = threading.Condition()
+        self._fatal_lock = threading.Lock()
+        self.fatal_error: str | None = None
+        self._latest_capture: CapturedFrame | None = None
+        self._last_processed_sequence = 0
+        self._capture_thread = threading.Thread(
+            target=self._capture_entry,
+            name=f"cap-line-v6-capture-{self.camera_index}",
+            daemon=True,
+        )
+        self._thread = threading.Thread(
+            target=self._worker_entry,
+            name=f"cap-line-v6-camera-{self.camera_index}",
+            daemon=True,
+        )
 
     def start(self) -> None:
+        self._capture_thread.start()
         self._thread.start()
 
-    def join(self, timeout: float | None = None) -> None:
-        self._thread.join(timeout)
+    def join(self, timeout: float | None = None) -> bool:
+        """Join both worker threads and report whether shutdown completed."""
+
+        if timeout is None:
+            self._thread.join()
+            self._capture_thread.join()
+        else:
+            deadline = time.monotonic() + max(0.0, float(timeout))
+            self._thread.join(max(0.0, deadline - time.monotonic()))
+            self._capture_thread.join(max(0.0, deadline - time.monotonic()))
+        return not self._thread.is_alive() and not self._capture_thread.is_alive()
+
+    def _mark_fatal(self, role: str, exc: BaseException) -> None:
+        with self._fatal_lock:
+            if self.fatal_error is None:
+                self.fatal_error = (
+                    f"camera {self.camera_index} {role} crashed with {type(exc).__name__}"
+                )
+        self.stop_event.set()
+
+    def _capture_entry(self) -> None:
+        try:
+            self._capture_loop()
+        except BaseException as exc:
+            self._mark_fatal("capture thread", exc)
+
+    def _worker_entry(self) -> None:
+        try:
+            self._run()
+        except BaseException as exc:
+            self._mark_fatal("inference thread", exc)
 
     def _read(self) -> CapturedFrame | None:
         try:
@@ -339,20 +423,48 @@ class CameraWorker:
         self._sequence += 1
         return CapturedFrame(self.camera_index, frame, float(self.time_fn()), self._sequence)
 
+    def _capture_loop(self) -> None:
+        """Continuously drain V4L2 and retain only the freshest frame.
+
+        Capture and inference used to be serial. On a slow Jetson inference,
+        OpenCV could then deliver an old cap sequence long after the cap had
+        left. A one-slot handoff deliberately drops intermediate frames.
+        """
+
+        while not self.stop_event.is_set():
+            captured = self._read()
+            if captured is None:
+                self.shared.clear_boxes(self.camera_index)
+                self.sleep_fn(0.005)
+                continue
+            self.shared.record_capture(self.camera_index)
+            with self._capture_condition:
+                self._latest_capture = captured
+                self._capture_condition.notify_all()
+            # Real V4L2 reads block at the camera frame rate. This tiny yield
+            # also keeps injected/non-blocking test cameras from starving the
+            # inference consumer.
+            self.sleep_fn(0.001)
+
+    def _next_capture(self) -> CapturedFrame | None:
+        with self._capture_condition:
+            while not self.stop_event.is_set():
+                captured = self._latest_capture
+                if captured is not None and captured.sequence > self._last_processed_sequence:
+                    self._last_processed_sequence = captured.sequence
+                    return captured
+                self._capture_condition.wait(timeout=0.05)
+        return None
+
     def _finish_due_tracks(self, now: float) -> None:
         for track in self.tracker.collect_finished(now):
             self.manager.handle_finished_track(track)
 
     def _run(self) -> None:
         while not self.stop_event.is_set():
-            captured = self._read()
+            captured = self._next_capture()
             if captured is None:
-                # No frame this iteration: still advance timeouts so a cap that
-                # just left view finishes even during a quiet stretch.
-                self._finish_due_tracks(float(self.time_fn()))
-                self.sleep_fn(0.005)
                 continue
-            self.shared.record_capture(self.camera_index)
             inference_start = float(self.time_fn())
             try:
                 tensor, meta = self.preprocess_fn(captured.frame, self.model_imgsz)
@@ -360,13 +472,38 @@ class CameraWorker:
                 raw_boxes = self.postprocess_fn(output, meta, conf_threshold=self.reject_threshold)
             except Exception as exc:
                 self.log_fn(f"[CAMERA {self.camera_index}][WARN] inference failed: {exc}")
+                self.shared.clear_boxes(self.camera_index)
+                # Even a failed inference advances the capture timeline. Expire
+                # the previous cap before a later detection can revive it.
+                self._finish_due_tracks(captured.timestamp)
                 self.sleep_fn(0.005)
                 continue
-            boxes = tuple(_to_box(box) for box in raw_boxes)
-            inference_ms = (float(self.time_fn()) - inference_start) * 1000.0
+            if self.stop_event.is_set():
+                break  # never turn an inference that completed during stop into a pulse
+            inference_completed = float(self.time_fn())
+            frame_age = inference_completed - captured.timestamp
+            if frame_age > self.max_frame_age_s:
+                self.shared.clear_boxes(self.camera_index)
+                self._finish_due_tracks(captured.timestamp)
+                self.log_fn(
+                    f"[CAMERA {self.camera_index}][STALE] dropped inference result for a "
+                    f"{frame_age * 1000.0:.0f} ms-old frame "
+                    f"(limit={self.max_frame_age_s * 1000.0:.0f} ms)"
+                )
+                continue
+            unique_boxes = deduplicate_boxes(raw_boxes, iou_threshold=self.duplicate_iou_threshold)
+            boxes = tuple(_to_box(box) for box in unique_boxes)
+            inference_ms = (inference_completed - inference_start) * 1000.0
             self.shared.publish(self.camera_index, captured.frame, boxes, inference_ms)
-            self.tracker.update(boxes, captured.timestamp)
-            self._finish_due_tracks(float(self.time_fn()))
+            try:
+                frame_size = (int(captured.frame.shape[1]), int(captured.frame.shape[0]))
+            except Exception:
+                frame_size = None
+            # Expire old tracks *before* association. Updating first allowed a
+            # late frame (or the next cap) to revive a track whose timeout had
+            # already elapsed, combining separate physical presences.
+            self._finish_due_tracks(captured.timestamp)
+            self.tracker.update(boxes, captured.timestamp, frame_size)
 
 
 # --------------------------------------------------------------------------- #
@@ -425,10 +562,13 @@ def run_detection(
         trigger_pin=config.trigger_pin,
         trigger_duration=config.trigger_duration,
         trigger_min_gap=config.trigger_min_gap,
+        max_queue_age=float(config.trigger_max_queue_age_ms) / 1000.0,
+        max_lateness=float(config.trigger_max_lateness_ms) / 1000.0,
         pin_factory=pin_factory,
         log_fn=log_fn,
         time_fn=time_fn,
         sleep_fn=sleep_fn,
+        cancel_event=stop_event,
     )
     manager = CapEventManager(
         config,
@@ -440,7 +580,20 @@ def run_detection(
     )
     track_timeout_s = float(config.track_timeout_ms) / 1000.0
     trackers = [
-        CameraTracker(index, track_iou=config.track_iou, track_timeout_s=track_timeout_s)
+        CameraTracker(
+            index,
+            track_iou=config.track_iou,
+            track_timeout_s=track_timeout_s,
+            min_defect_frames=config.min_defect_frames,
+            presence_clear_s=float(config.presence_clear_ms) / 1000.0,
+            min_track_frames=config.min_track_frames,
+            min_track_travel_ratio=config.min_track_travel_ratio,
+            min_track_directionality=config.min_track_directionality,
+            presence_line_axis=config.presence_line_axis,
+            presence_line_ratio=config.presence_line_ratio,
+            presence_direction=config.presence_direction,
+            max_track_gap_s=float(config.max_track_gap_ms) / 1000.0,
+        )
         for index in range(len(camera_sources))
     ]
     shared = SharedRuntimeState(len(camera_sources))
@@ -452,6 +605,8 @@ def run_detection(
             input_name=input_names[index],
             model_imgsz=model_imgsz,
             reject_threshold=config.reject_threshold,
+            duplicate_iou_threshold=config.duplicate_iou_threshold,
+            max_frame_age_s=float(config.max_frame_age_ms) / 1000.0,
             mirror_horizontal=config.mirror_cameras[index],
             tracker=trackers[index],
             manager=manager,
@@ -477,18 +632,36 @@ def run_detection(
     last_preview = 0.0
     last_perf = 0.0
 
-    log_fn(f"Using v6 model: {model_path} imgsz={model_imgsz} target_fps={config.target_fps} gpio={scheduler.backend_name}")
+    log_fn(
+        f"Using v6 model: {model_path} imgsz={model_imgsz} target_fps={config.target_fps} "
+        f"gpio={scheduler.backend_name} presence_gate={config.presence_line_axis}"
+        f"@{config.presence_line_ratio:.3f}/{config.presence_direction} "
+        f"track={config.min_track_frames}frames dirt={config.min_defect_frames}frames"
+    )
     try:
         for worker in workers:
             worker.start()
         while not stop_event.is_set():
+            if scheduler.fatal_error is not None:
+                raise RuntimeError(f"[REJECT][FATAL] {scheduler.fatal_error}")
+            camera_fatal = next(
+                (worker.fatal_error for worker in workers if worker.fatal_error is not None),
+                None,
+            )
+            if camera_fatal is not None:
+                raise RuntimeError(f"[CAMERA][FATAL] {camera_fatal}")
             now = clock.monotonic()
             manager.flush_expired(now)
 
             if callbacks.test_fire_poll is not None and callbacks.test_fire_poll():
                 # Manual operator pulse through the runtime's own pin (event 0).
+                if stop_event.is_set():
+                    break
                 log_fn(f"[TEST FIRE] manual pulse via {scheduler.backend_name}")
-                scheduler.enqueue(0, now)
+                try:
+                    scheduler.enqueue(0, now)
+                except RuntimeError:
+                    break  # stop/close won the race; never resurrect a pulse
 
             if preview_enabled and not preview_broken and (now - last_preview) >= preview_interval_s:
                 last_preview = now
@@ -499,7 +672,15 @@ def run_detection(
                         if frame is None:
                             continue
                         drawable = frame.copy() if hasattr(frame, "copy") else frame
-                        annotated.append(draw_boxes(drawable, frame_boxes))
+                        annotated.append(
+                            draw_boxes(
+                                drawable,
+                                frame_boxes,
+                                presence_line_axis=config.presence_line_axis,
+                                presence_line_ratio=config.presence_line_ratio,
+                                presence_direction=config.presence_direction,
+                            )
+                        )
                     composite = compose_preview(annotated)
                     if composite is not None:
                         callbacks.preview_callback(composite)
@@ -514,17 +695,34 @@ def run_detection(
             sleep_fn(0.005)
     finally:
         stop_event.set()
-        for worker in workers:
-            worker.join(timeout=2.0)
-        # Finalize any caps still mid-track so the last cap before stop is logged.
-        for tracker in trackers:
-            for track in tracker.flush():
-                manager.handle_finished_track(track)
-        manager.finalize_all()
+        # Cancel the actuator first. Worker/capture teardown can block on
+        # inference or V4L2; no queued pulse may fire during that wait.
+        scheduler_closed_cleanly = scheduler.close()
         for camera in cameras:
             if hasattr(camera, "release"):
                 camera.release()
-        scheduler.close()
+        stuck_camera_workers = [
+            worker.camera_index for worker in workers if not worker.join(timeout=2.0)
+        ]
+        camera_fatals = [
+            worker.fatal_error for worker in workers if worker.fatal_error is not None
+        ]
+        # Stopping is a safety boundary: never convert a partial/unconfirmed
+        # track into a new fire request. Pending scheduler jobs are cancelled
+        # below rather than drained through the valve.
+        for tracker in trackers:
+            tracker.flush()
+        manager.finalize_all()
+        if not scheduler_closed_cleanly:
+            raise RuntimeError(
+                f"[REJECT][FATAL] {scheduler.fatal_error or 'reject scheduler shutdown failed'}"
+            )
+        if camera_fatals:
+            raise RuntimeError(f"[CAMERA][FATAL] {'; '.join(camera_fatals)}")
+        if stuck_camera_workers:
+            raise RuntimeError(
+                f"[CAMERA][FATAL] worker shutdown timed out for camera(s) {stuck_camera_workers}"
+            )
 
 
 def _perf_snapshot(

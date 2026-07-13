@@ -4,13 +4,20 @@
     "3"
   ],
   "db_path": "data/cap_line_history_v6.sqlite3",
+  "duplicate_iou_threshold": 0.65,
   "exposure": 8,
   "fire_delay_s": 0.0,
   "gpio_backend": "jetson",
   "imgsz": null,
   "live_preview_fps": 30.0,
+  "max_frame_age_ms": 500.0,
+  "max_track_gap_ms": 250.0,
   "merge_window_ms": 150.0,
+  "min_defect_frames": 3,
   "min_fire_interval_ms": 250.0,
+  "min_track_directionality": 0.6,
+  "min_track_frames": 4,
+  "min_track_travel_ratio": 0.35,
   "mirror_cameras": [
     false,
     true
@@ -19,6 +26,10 @@
   "no_display": false,
   "onnx_intra_op_threads": 2,
   "pixel_format": "YUYV",
+  "presence_clear_ms": 150.0,
+  "presence_direction": "positive",
+  "presence_line_axis": "x",
+  "presence_line_ratio": 0.5,
   "reject_threshold": 0.45,
   "resolution": [
     960,
@@ -27,8 +38,10 @@
   "simulate_gpio": false,
   "target_fps": 60,
   "track_iou": 0.3,
-  "track_timeout_ms": 150.0,
+  "track_timeout_ms": 250.0,
   "trigger_duration": 0.3,
+  "trigger_max_queue_age_ms": 250.0,
+  "trigger_max_lateness_ms": 500.0,
   "trigger_min_gap": 0.0,
   "trigger_pin": 7
 }

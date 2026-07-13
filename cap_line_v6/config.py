@@ -1,11 +1,10 @@
 """Slim v6 runtime configuration.
 
-Identical to v5's config except the GPIO defaults: v6 targets the Jetson Nano
-rig, so ``gpio_backend`` defaults to ``"jetson"`` and ``trigger_pin`` to BOARD
-pin 7 (GPIO09), driven by the untouched ``gpio_output.py``. Everything else —
-dirtv7 model and the double-trigger fix knobs (``merge_window_ms`` keyed to
-physical cap-exit times plus the ``min_fire_interval_ms`` post-fire
-refractory) — is unchanged from v5.
+v6 targets the Jetson Nano rig, so ``gpio_backend`` defaults to ``"jetson"``
+and ``trigger_pin`` to BOARD pin 7 (GPIO09). It also contains the rig-safety
+guards added after high-confidence empty-belt hallucinations caused repeated
+pulses: duplicate suppression, physical-track qualification, temporal defect
+confirmation, presence-cycle idempotency, and stale scheduler-job expiry.
 """
 
 from __future__ import annotations
@@ -35,10 +34,26 @@ DEFAULT_EXPOSURE = 8
 DEFAULT_PIXEL_FORMAT = "YUYV"
 DEFAULT_ONNX_INTRA_OP_THREADS = max(1, (os.cpu_count() or 2) // 2)
 DEFAULT_REJECT_THRESHOLD = 0.45
+DEFAULT_DUPLICATE_IOU_THRESHOLD = 0.65
 DEFAULT_TRACK_IOU = 0.3
-# Must exceed ~2x the worst processed-frame interval or tracks fragment
-# mid-cap; must stay below the gap between consecutive caps at one camera.
-DEFAULT_TRACK_TIMEOUT_MS = 150.0
+# Must exceed the worst processed-frame interval or tracks fragment mid-cap;
+# must stay below the gap between consecutive caps at one camera.
+DEFAULT_TRACK_TIMEOUT_MS = 250.0
+# A detector confidence score is not proof that a physical cap is present.
+# Qualify tracks using multiple frames and conveyor-like motion before they are
+# allowed to reach the event manager / air scheduler.
+DEFAULT_MIN_TRACK_FRAMES = 4
+DEFAULT_MIN_TRACK_TRAVEL_RATIO = 0.35
+DEFAULT_MIN_TRACK_DIRECTIONALITY = 0.60
+DEFAULT_MIN_DEFECT_FRAMES = 3
+DEFAULT_PRESENCE_LINE_AXIS = "x"
+DEFAULT_PRESENCE_LINE_RATIO = 0.50
+DEFAULT_PRESENCE_DIRECTION = "positive"
+DEFAULT_MAX_TRACK_GAP_MS = 250.0
+# Near-simultaneous line crossings in the same perpendicular image band retain
+# one camera-local presence-cycle id, making actuation idempotent across
+# fragments without conflating concurrently visible caps in different bands.
+DEFAULT_PRESENCE_CLEAR_MS = 150.0
 DEFAULT_FIRE_DELAY_S = 0.0
 # Two finished tracks are the same physical cap when their last_seen times are
 # within this window (cross-camera exit skew), regardless of reporting lag.
@@ -51,6 +66,12 @@ DEFAULT_GPIO_BACKEND = "jetson"
 DEFAULT_TRIGGER_PIN = GPIO09  # Jetson Nano BOARD pin 7
 DEFAULT_TRIGGER_DURATION = 0.3
 DEFAULT_TRIGGER_MIN_GAP = 0.0
+# Runnable jobs older than this are backlog, not timely reject commands. This
+# prevents a burst of false events from continuing to pulse after the scene is
+# clear. Age starts when the job becomes runnable, not at cap last_seen.
+DEFAULT_TRIGGER_MAX_QUEUE_AGE_MS = 250.0
+DEFAULT_TRIGGER_MAX_LATENESS_MS = 500.0
+DEFAULT_MAX_FRAME_AGE_MS = 500.0
 DEFAULT_LIVE_PREVIEW_FPS = 30.0
 DEFAULT_DB_PATH = str(SCRIPT_DIR / "data" / "cap_line_history_v6.sqlite3")
 
@@ -85,8 +106,18 @@ class RuntimeConfig:
     imgsz: int | None = None
     onnx_intra_op_threads: int = DEFAULT_ONNX_INTRA_OP_THREADS
     reject_threshold: float = DEFAULT_REJECT_THRESHOLD
+    duplicate_iou_threshold: float = DEFAULT_DUPLICATE_IOU_THRESHOLD
     track_iou: float = DEFAULT_TRACK_IOU
     track_timeout_ms: float = DEFAULT_TRACK_TIMEOUT_MS
+    min_track_frames: int = DEFAULT_MIN_TRACK_FRAMES
+    min_track_travel_ratio: float = DEFAULT_MIN_TRACK_TRAVEL_RATIO
+    min_track_directionality: float = DEFAULT_MIN_TRACK_DIRECTIONALITY
+    min_defect_frames: int = DEFAULT_MIN_DEFECT_FRAMES
+    presence_line_axis: str = DEFAULT_PRESENCE_LINE_AXIS
+    presence_line_ratio: float = DEFAULT_PRESENCE_LINE_RATIO
+    presence_direction: str = DEFAULT_PRESENCE_DIRECTION
+    max_track_gap_ms: float = DEFAULT_MAX_TRACK_GAP_MS
+    presence_clear_ms: float = DEFAULT_PRESENCE_CLEAR_MS
     fire_delay_s: float = DEFAULT_FIRE_DELAY_S
     merge_window_ms: float = DEFAULT_MERGE_WINDOW_MS
     min_fire_interval_ms: float = DEFAULT_MIN_FIRE_INTERVAL_MS
@@ -94,6 +125,9 @@ class RuntimeConfig:
     trigger_pin: str | int = DEFAULT_TRIGGER_PIN
     trigger_duration: float = DEFAULT_TRIGGER_DURATION
     trigger_min_gap: float = DEFAULT_TRIGGER_MIN_GAP
+    trigger_max_queue_age_ms: float = DEFAULT_TRIGGER_MAX_QUEUE_AGE_MS
+    trigger_max_lateness_ms: float = DEFAULT_TRIGGER_MAX_LATENESS_MS
+    max_frame_age_ms: float = DEFAULT_MAX_FRAME_AGE_MS
     simulate_gpio: bool = False
     live_preview_fps: float = DEFAULT_LIVE_PREVIEW_FPS
     db_path: str = DEFAULT_DB_PATH
@@ -126,6 +160,13 @@ class RuntimeConfig:
         if "merge_window_ms" not in data and "global_cooldown_ms" in data:
             data["merge_window_ms"] = data["global_cooldown_ms"]
         merged = {**allowed, **{key: value for key, value in data.items() if key in allowed}}
+        if "max_track_gap_ms" not in data:
+            # Old v6 files commonly contain the former 150 ms timeout but no
+            # gap field. Keep that migration valid under the new invariant.
+            merged["max_track_gap_ms"] = min(
+                float(defaults.max_track_gap_ms),
+                float(merged["track_timeout_ms"]),
+            )
         merged["cameras"] = tuple(str(value) for value in merged["cameras"])[:2]
         mirror = list(merged.get("mirror_cameras", defaults.mirror_cameras))
         if len(mirror) != 2:
@@ -134,6 +175,8 @@ class RuntimeConfig:
         merged["resolution"] = tuple(int(value) for value in merged["resolution"])[:2]
         merged["pixel_format"] = normalize_pixel_format(merged["pixel_format"])
         merged["gpio_backend"] = normalize_gpio_backend(merged["gpio_backend"])
+        merged["presence_line_axis"] = str(merged["presence_line_axis"]).lower()
+        merged["presence_direction"] = str(merged["presence_direction"]).lower()
         return cls(**merged)
 
 
@@ -148,10 +191,32 @@ def validate_config(config: RuntimeConfig) -> None:
         raise ValueError("target_fps must be greater than 0")
     if not 0.0 <= float(config.reject_threshold) <= 1.0:
         raise ValueError("reject_threshold must be between 0 and 1")
+    if not 0.0 <= float(config.duplicate_iou_threshold) <= 1.0:
+        raise ValueError("duplicate_iou_threshold must be between 0 and 1")
     if not 0.0 <= float(config.track_iou) <= 1.0:
         raise ValueError("track_iou must be between 0 and 1")
-    if float(config.track_timeout_ms) < 0:
-        raise ValueError("track_timeout_ms must be 0 or greater")
+    if float(config.track_timeout_ms) <= 0:
+        raise ValueError("track_timeout_ms must be greater than 0")
+    if int(config.min_track_frames) < 2:
+        raise ValueError("min_track_frames must be at least 2")
+    if float(config.min_track_travel_ratio) < 0:
+        raise ValueError("min_track_travel_ratio must be 0 or greater")
+    if not 0.0 <= float(config.min_track_directionality) <= 1.0:
+        raise ValueError("min_track_directionality must be between 0 and 1")
+    if int(config.min_defect_frames) < 2:
+        raise ValueError("min_defect_frames must be at least 2")
+    if str(config.presence_line_axis).lower() not in {"x", "y"}:
+        raise ValueError("presence_line_axis must be x or y")
+    if not 0.0 <= float(config.presence_line_ratio) <= 1.0:
+        raise ValueError("presence_line_ratio must be between 0 and 1")
+    if str(config.presence_direction).lower() not in {"positive", "negative", "either"}:
+        raise ValueError("presence_direction must be positive, negative, or either")
+    if float(config.max_track_gap_ms) <= 0:
+        raise ValueError("max_track_gap_ms must be greater than 0")
+    if float(config.max_track_gap_ms) > float(config.track_timeout_ms):
+        raise ValueError("max_track_gap_ms cannot exceed track_timeout_ms")
+    if float(config.presence_clear_ms) < 0:
+        raise ValueError("presence_clear_ms must be 0 or greater")
     if float(config.merge_window_ms) < 0:
         raise ValueError("merge_window_ms must be 0 or greater")
     if float(config.min_fire_interval_ms) < 0:
@@ -162,6 +227,12 @@ def validate_config(config: RuntimeConfig) -> None:
         raise ValueError("trigger_duration must be greater than 0")
     if float(config.trigger_min_gap) < 0:
         raise ValueError("trigger_min_gap must be 0 or greater")
+    if float(config.trigger_max_queue_age_ms) < 0:
+        raise ValueError("trigger_max_queue_age_ms must be 0 or greater")
+    if float(config.trigger_max_lateness_ms) < 0:
+        raise ValueError("trigger_max_lateness_ms must be 0 or greater")
+    if float(config.max_frame_age_ms) <= 0:
+        raise ValueError("max_frame_age_ms must be greater than 0")
     if float(config.live_preview_fps) < 0:
         raise ValueError("live_preview_fps must be 0 or greater")
 
@@ -182,8 +253,22 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--imgsz", type=int, default=defaults.imgsz)
     parser.add_argument("--onnx-intra-op-threads", type=int, default=defaults.onnx_intra_op_threads)
     parser.add_argument("--reject-threshold", type=float, default=defaults.reject_threshold)
+    parser.add_argument("--duplicate-iou-threshold", type=float, default=defaults.duplicate_iou_threshold)
     parser.add_argument("--track-iou", type=float, default=defaults.track_iou)
     parser.add_argument("--track-timeout-ms", type=float, default=defaults.track_timeout_ms)
+    parser.add_argument("--min-track-frames", type=int, default=defaults.min_track_frames)
+    parser.add_argument("--min-track-travel-ratio", type=float, default=defaults.min_track_travel_ratio)
+    parser.add_argument("--min-track-directionality", type=float, default=defaults.min_track_directionality)
+    parser.add_argument("--min-defect-frames", type=int, default=defaults.min_defect_frames)
+    parser.add_argument("--presence-line-axis", choices=["x", "y"], default=defaults.presence_line_axis)
+    parser.add_argument("--presence-line-ratio", type=float, default=defaults.presence_line_ratio)
+    parser.add_argument(
+        "--presence-direction",
+        choices=["positive", "negative", "either"],
+        default=defaults.presence_direction,
+    )
+    parser.add_argument("--max-track-gap-ms", type=float, default=defaults.max_track_gap_ms)
+    parser.add_argument("--presence-clear-ms", type=float, default=defaults.presence_clear_ms)
     parser.add_argument("--fire-delay-s", type=float, default=defaults.fire_delay_s)
     parser.add_argument("--merge-window-ms", type=float, default=defaults.merge_window_ms)
     parser.add_argument("--min-fire-interval-ms", type=float, default=defaults.min_fire_interval_ms)
@@ -191,6 +276,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--trigger-pin", default=defaults.trigger_pin)
     parser.add_argument("--trigger-duration", type=float, default=defaults.trigger_duration)
     parser.add_argument("--trigger-min-gap", type=float, default=defaults.trigger_min_gap)
+    parser.add_argument("--trigger-max-queue-age-ms", type=float, default=defaults.trigger_max_queue_age_ms)
+    parser.add_argument("--trigger-max-lateness-ms", type=float, default=defaults.trigger_max_lateness_ms)
+    parser.add_argument("--max-frame-age-ms", type=float, default=defaults.max_frame_age_ms)
     parser.add_argument("--simulate-gpio", action="store_true", default=defaults.simulate_gpio)
     parser.add_argument("--live-preview-fps", type=float, default=defaults.live_preview_fps)
     parser.add_argument("--db-path", default=defaults.db_path)
@@ -210,8 +298,18 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         imgsz=args.imgsz,
         onnx_intra_op_threads=int(args.onnx_intra_op_threads),
         reject_threshold=float(args.reject_threshold),
+        duplicate_iou_threshold=float(args.duplicate_iou_threshold),
         track_iou=float(args.track_iou),
         track_timeout_ms=float(args.track_timeout_ms),
+        min_track_frames=int(args.min_track_frames),
+        min_track_travel_ratio=float(args.min_track_travel_ratio),
+        min_track_directionality=float(args.min_track_directionality),
+        min_defect_frames=int(args.min_defect_frames),
+        presence_line_axis=str(args.presence_line_axis).lower(),
+        presence_line_ratio=float(args.presence_line_ratio),
+        presence_direction=str(args.presence_direction).lower(),
+        max_track_gap_ms=float(args.max_track_gap_ms),
+        presence_clear_ms=float(args.presence_clear_ms),
         fire_delay_s=float(args.fire_delay_s),
         merge_window_ms=float(args.merge_window_ms),
         min_fire_interval_ms=float(args.min_fire_interval_ms),
@@ -219,6 +317,9 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         trigger_pin=args.trigger_pin,
         trigger_duration=float(args.trigger_duration),
         trigger_min_gap=float(args.trigger_min_gap),
+        trigger_max_queue_age_ms=float(args.trigger_max_queue_age_ms),
+        trigger_max_lateness_ms=float(args.trigger_max_lateness_ms),
+        max_frame_age_ms=float(args.max_frame_age_ms),
         simulate_gpio=bool(args.simulate_gpio),
         live_preview_fps=float(args.live_preview_fps),
         db_path=str(args.db_path),
