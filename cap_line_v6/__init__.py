@@ -1,9 +1,9 @@
 """Standalone v6 cap-inspection runtime package.
 
-Identical to v5 (dirtv7 model, double-trigger fix: cross-camera merging keyed
-to physical cap-exit times plus a post-fire refractory that guarantees one air
-pulse per physical cap) except that GPIO defaults to the Jetson Nano driver
-(``gpio_output.py``, BOARD pin 7 / GPIO09) instead of the Raspberry Pi one.
+Jetson-targeted cap inspection with physical track qualification, temporal
+defect confirmation, presence-cycle idempotency, latest-frame capture, and a
+stale-safe reject scheduler. GPIO defaults to ``gpio_output.py`` on BOARD pin 7
+(GPIO09); the Raspberry Pi backend remains selectable.
 """
 
 from .actuation import NullGPIOOutputPin, RejectScheduler
@@ -20,7 +20,7 @@ from .config import (
     validate_config,
 )
 from .decision import CapEvent, CapEventManager
-from .model import postprocess, preprocess, resolve_imgsz, resolve_model_path
+from .model import deduplicate_boxes, postprocess, preprocess, resolve_imgsz, resolve_model_path
 from .runtime import Clock, CameraWorker, compose_preview, draw_boxes, resolve_pin_factory, run_detection
 from .tracking import CameraTracker, Track, box_iou
 from .types import Box, CapEventRecord, CapturedFrame, PerfSnapshot, RuntimeCallbacks
@@ -50,6 +50,7 @@ __all__ = [
     "compose_preview",
     "config_from_args",
     "draw_boxes",
+    "deduplicate_boxes",
     "parse_args",
     "postprocess",
     "preprocess",

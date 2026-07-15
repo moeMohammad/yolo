@@ -4,7 +4,8 @@
 Slim by design: live dual-camera preview, start/stop, a status bar (GPIO backend,
 per-camera FPS / inference ms, run state), session counters, the slim settings
 panel, a manual test-fire button (routed through the running runtime's own pin
-while detection is active), and a recent-rejects table backed by sqlite.
+while detection is active), and a per-cap history table backed by sqlite (every
+cap, pass and reject, with its final merged decision).
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from cap_line_v6.types import RuntimeCallbacks
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_SETTINGS_PATH = str(SCRIPT_DIR / "cap_line_ui_v6_settings.json")
-REJECT_LIMIT = 100
+HISTORY_LIMIT = 200
 LIVE_POLL_INTERVAL_MS = 16
 TRIGGER_PIN_LABEL = "Trigger Pin (Jetson BOARD, e.g. 7 = GPIO09)"
 
@@ -76,7 +77,7 @@ def pulse_test_fire(
 
 
 class ConfigSettingsStore:
-    """Load/save the slim v4 config to a JSON file."""
+    """Load/save the v6 runtime config to a JSON file."""
 
     def __init__(self, path: str | os.PathLike[str] = DEFAULT_SETTINGS_PATH):
         self.path = Path(path)
@@ -199,14 +200,14 @@ class HistoryRepository:
                 ),
             )
 
-    def fetch_rejects(self, limit: int = REJECT_LIMIT) -> list[dict[str, object]]:
+    def fetch_history(self, limit: int = HISTORY_LIMIT) -> list[dict[str, object]]:
+        """Most recent caps first — every cap (pass and reject), one row per cap."""
         rows = self._connection.execute(
             """
             SELECT event_id, recorded_at, result, class_name, confidence,
                    cameras_json, flagged_cameras_json, requested_fire_time, actual_fire_time,
                    fire_suppressed
             FROM cap_line_history_v6
-            WHERE result = 'reject'
             ORDER BY recorded_at DESC, id DESC
             LIMIT ?
             """,
@@ -340,7 +341,7 @@ class DetectionAppController:
 
 try:
     from PyQt6.QtCore import QTimer, Qt
-    from PyQt6.QtGui import QCloseEvent, QImage, QPixmap
+    from PyQt6.QtGui import QCloseEvent, QColor, QImage, QPixmap
     from PyQt6.QtWidgets import (
         QApplication,
         QCheckBox,
@@ -353,6 +354,7 @@ try:
         QLabel,
         QLineEdit,
         QPushButton,
+        QScrollArea,
         QSpinBox,
         QSplitter,
         QTableWidget,
@@ -363,7 +365,7 @@ try:
     )
 
     PYQT_AVAILABLE = True
-except ModuleNotFoundError:
+except ImportError:
     PYQT_AVAILABLE = False
 
 
@@ -400,7 +402,7 @@ if PYQT_AVAILABLE:
             self.resize(1380, 880)
             self._build_ui()
             self._load_config(self._loaded_config)
-            self._load_rejects_table()
+            self._load_history_table()
             self._sync_controls()
             self.poll_timer = QTimer(self)
             self.poll_timer.setInterval(LIVE_POLL_INTERVAL_MS)
@@ -423,24 +425,17 @@ if PYQT_AVAILABLE:
             self.tabs = QTabWidget()
             self.live_tab = QWidget()
             self.config_tab = QWidget()
-            self.rejects_tab = QWidget()
+            self.history_tab = QWidget()
             self.tabs.addTab(self.live_tab, "Live")
             self.tabs.addTab(self.config_tab, "Config")
-            self.tabs.addTab(self.rejects_tab, "Rejects")
+            self.tabs.addTab(self.history_tab, "Cap Log")
             root.addWidget(self.tabs)
             self._build_live_tab()
             self._build_config_tab()
-            self._build_rejects_tab()
+            self._build_history_tab()
 
         def _build_live_tab(self) -> None:
             layout = QVBoxLayout(self.live_tab)
-            # Final per-cap verdict: the merged cross-camera classification the
-            # trigger decision is based on, fed only by per-cap history records.
-            self.verdict_label = QLabel("Waiting for the first cap")
-            self.verdict_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.verdict_label.setMinimumHeight(64)
-            self._style_verdict(None)
-            layout.addWidget(self.verdict_label)
             splitter = QSplitter(Qt.Orientation.Horizontal)
             layout.addWidget(splitter, 1)
             preview_group = QGroupBox("Dual-Camera Preview")
@@ -465,6 +460,18 @@ if PYQT_AVAILABLE:
             self.test_fire_button = QPushButton("Test Fire")
             self.test_fire_button.clicked.connect(self._test_fire)
             side_layout.addWidget(self.test_fire_button)
+
+            # Final per-cap verdict: the merged cross-camera decision the air
+            # fire is based on, fed only by per-cap history records.
+            verdict_group = QGroupBox("Last Cap Decision")
+            verdict_layout = QVBoxLayout(verdict_group)
+            self.verdict_label = QLabel("Waiting for the first cap")
+            self.verdict_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.verdict_label.setWordWrap(True)
+            self.verdict_label.setMinimumHeight(84)
+            self._style_verdict(None)
+            verdict_layout.addWidget(self.verdict_label)
+            side_layout.addWidget(verdict_group)
 
             counters = QGroupBox("Session")
             counters_layout = QGridLayout(counters)
@@ -498,8 +505,18 @@ if PYQT_AVAILABLE:
             self.imgsz_spin = QSpinBox(); self.imgsz_spin.setRange(0, 4096)  # 0 = auto
             self.onnx_threads_spin = QSpinBox(); self.onnx_threads_spin.setRange(1, 64)
             self.reject_threshold_spin = QDoubleSpinBox(); self.reject_threshold_spin.setRange(0, 1); self.reject_threshold_spin.setDecimals(3)
+            self.duplicate_iou_spin = QDoubleSpinBox(); self.duplicate_iou_spin.setRange(0, 1); self.duplicate_iou_spin.setDecimals(3)
             self.track_iou_spin = QDoubleSpinBox(); self.track_iou_spin.setRange(0, 1); self.track_iou_spin.setDecimals(3)
-            self.track_timeout_spin = QDoubleSpinBox(); self.track_timeout_spin.setRange(0, 5000); self.track_timeout_spin.setDecimals(1)
+            self.track_timeout_spin = QDoubleSpinBox(); self.track_timeout_spin.setRange(1, 5000); self.track_timeout_spin.setDecimals(1)
+            self.min_track_frames_spin = QSpinBox(); self.min_track_frames_spin.setRange(2, 100)
+            self.min_track_travel_spin = QDoubleSpinBox(); self.min_track_travel_spin.setRange(0, 20); self.min_track_travel_spin.setDecimals(3)
+            self.min_track_directionality_spin = QDoubleSpinBox(); self.min_track_directionality_spin.setRange(0, 1); self.min_track_directionality_spin.setDecimals(3)
+            self.min_defect_frames_spin = QSpinBox(); self.min_defect_frames_spin.setRange(2, 100)
+            self.presence_line_axis_combo = QComboBox(); self.presence_line_axis_combo.addItems(["x", "y"])
+            self.presence_line_ratio_spin = QDoubleSpinBox(); self.presence_line_ratio_spin.setRange(0, 1); self.presence_line_ratio_spin.setDecimals(3)
+            self.presence_direction_combo = QComboBox(); self.presence_direction_combo.addItems(["positive", "negative", "either"])
+            self.max_track_gap_spin = QDoubleSpinBox(); self.max_track_gap_spin.setRange(1, 10000); self.max_track_gap_spin.setDecimals(1)
+            self.presence_clear_spin = QDoubleSpinBox(); self.presence_clear_spin.setRange(0, 10000); self.presence_clear_spin.setDecimals(1)
             self.fire_delay_spin = QDoubleSpinBox(); self.fire_delay_spin.setRange(0, 10); self.fire_delay_spin.setDecimals(3)
             self.merge_window_spin = QDoubleSpinBox(); self.merge_window_spin.setRange(0, 5000); self.merge_window_spin.setDecimals(1)
             self.min_fire_interval_spin = QDoubleSpinBox(); self.min_fire_interval_spin.setRange(0, 5000); self.min_fire_interval_spin.setDecimals(1)
@@ -507,6 +524,9 @@ if PYQT_AVAILABLE:
             self.trigger_pin_input = QLineEdit()
             self.trigger_duration_spin = QDoubleSpinBox(); self.trigger_duration_spin.setRange(0.01, 10); self.trigger_duration_spin.setDecimals(3)
             self.trigger_gap_spin = QDoubleSpinBox(); self.trigger_gap_spin.setRange(0, 10); self.trigger_gap_spin.setDecimals(3)
+            self.trigger_max_queue_age_spin = QDoubleSpinBox(); self.trigger_max_queue_age_spin.setRange(0, 10000); self.trigger_max_queue_age_spin.setDecimals(1)
+            self.trigger_max_lateness_spin = QDoubleSpinBox(); self.trigger_max_lateness_spin.setRange(0, 10000); self.trigger_max_lateness_spin.setDecimals(1)
+            self.max_frame_age_spin = QDoubleSpinBox(); self.max_frame_age_spin.setRange(1, 10000); self.max_frame_age_spin.setDecimals(1)
             self.live_preview_fps_spin = QDoubleSpinBox(); self.live_preview_fps_spin.setRange(0, 120); self.live_preview_fps_spin.setDecimals(1)
             self.db_path_input = QLineEdit()
             self.simulate_gpio_checkbox = QCheckBox("Simulate GPIO (no GPIO hardware)")
@@ -524,8 +544,18 @@ if PYQT_AVAILABLE:
                 ("Model Input Size (0=auto)", self.imgsz_spin),
                 ("ONNX Threads", self.onnx_threads_spin),
                 ("Reject Threshold", self.reject_threshold_spin),
+                ("Duplicate Box IOU", self.duplicate_iou_spin),
                 ("Track IOU", self.track_iou_spin),
                 ("Track Timeout ms", self.track_timeout_spin),
+                ("Minimum Track Frames", self.min_track_frames_spin),
+                ("Minimum Track Travel (box widths)", self.min_track_travel_spin),
+                ("Minimum Motion Directionality", self.min_track_directionality_spin),
+                ("Consecutive Defect Frames", self.min_defect_frames_spin),
+                ("Presence Line Axis", self.presence_line_axis_combo),
+                ("Presence Line Ratio (needs 2 frames/side)", self.presence_line_ratio_spin),
+                ("Belt Direction", self.presence_direction_combo),
+                ("Maximum Track Observation Gap ms", self.max_track_gap_spin),
+                ("Presence Clear ms", self.presence_clear_spin),
                 ("Fire Delay s", self.fire_delay_spin),
                 ("Merge Window ms", self.merge_window_spin),
                 ("Min Fire Interval ms", self.min_fire_interval_spin),
@@ -533,21 +563,26 @@ if PYQT_AVAILABLE:
                 (TRIGGER_PIN_LABEL, self.trigger_pin_input),
                 ("Trigger Duration s", self.trigger_duration_spin),
                 ("Trigger Min Gap s", self.trigger_gap_spin),
+                ("Trigger Max Queue Age ms", self.trigger_max_queue_age_spin),
+                ("Trigger Max Lateness ms", self.trigger_max_lateness_spin),
+                ("Maximum Processed Frame Age ms", self.max_frame_age_spin),
                 ("Live Preview FPS", self.live_preview_fps_spin),
                 ("History DB Path", self.db_path_input),
             ):
                 form.addRow(label, widget)
             form.addRow("", self.simulate_gpio_checkbox)
-            layout.addWidget(group)
-            layout.addStretch(1)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(group)
+            layout.addWidget(scroll)
 
-        def _build_rejects_tab(self) -> None:
-            layout = QVBoxLayout(self.rejects_tab)
-            self.rejects_table = QTableWidget(0, 6)
-            self.rejects_table.setHorizontalHeaderLabels(
-                ["Time", "Result", "Class", "Confidence", "Camera(s)", "Fire Time"]
+        def _build_history_tab(self) -> None:
+            layout = QVBoxLayout(self.history_tab)
+            self.history_table = QTableWidget(0, 7)
+            self.history_table.setHorizontalHeaderLabels(
+                ["Cap", "Time", "Result", "Class", "Confidence", "Camera(s)", "Fire Time"]
             )
-            layout.addWidget(self.rejects_table)
+            layout.addWidget(self.history_table)
 
         # -- config <-> widgets --------------------------------------------
 
@@ -565,8 +600,18 @@ if PYQT_AVAILABLE:
             self.imgsz_spin.setValue(0 if config.imgsz is None else int(config.imgsz))
             self.onnx_threads_spin.setValue(config.onnx_intra_op_threads)
             self.reject_threshold_spin.setValue(config.reject_threshold)
+            self.duplicate_iou_spin.setValue(config.duplicate_iou_threshold)
             self.track_iou_spin.setValue(config.track_iou)
             self.track_timeout_spin.setValue(config.track_timeout_ms)
+            self.min_track_frames_spin.setValue(config.min_track_frames)
+            self.min_track_travel_spin.setValue(config.min_track_travel_ratio)
+            self.min_track_directionality_spin.setValue(config.min_track_directionality)
+            self.min_defect_frames_spin.setValue(config.min_defect_frames)
+            self.presence_line_axis_combo.setCurrentText(config.presence_line_axis)
+            self.presence_line_ratio_spin.setValue(config.presence_line_ratio)
+            self.presence_direction_combo.setCurrentText(config.presence_direction)
+            self.max_track_gap_spin.setValue(config.max_track_gap_ms)
+            self.presence_clear_spin.setValue(config.presence_clear_ms)
             self.fire_delay_spin.setValue(config.fire_delay_s)
             self.merge_window_spin.setValue(config.merge_window_ms)
             self.min_fire_interval_spin.setValue(config.min_fire_interval_ms)
@@ -574,6 +619,9 @@ if PYQT_AVAILABLE:
             self.trigger_pin_input.setText(str(config.trigger_pin))
             self.trigger_duration_spin.setValue(config.trigger_duration)
             self.trigger_gap_spin.setValue(config.trigger_min_gap)
+            self.trigger_max_queue_age_spin.setValue(config.trigger_max_queue_age_ms)
+            self.trigger_max_lateness_spin.setValue(config.trigger_max_lateness_ms)
+            self.max_frame_age_spin.setValue(config.max_frame_age_ms)
             self.live_preview_fps_spin.setValue(config.live_preview_fps)
             self.db_path_input.setText(config.db_path)
             self.simulate_gpio_checkbox.setChecked(config.simulate_gpio)
@@ -592,8 +640,18 @@ if PYQT_AVAILABLE:
                 imgsz=None if imgsz <= 0 else imgsz,
                 onnx_intra_op_threads=self.onnx_threads_spin.value(),
                 reject_threshold=self.reject_threshold_spin.value(),
+                duplicate_iou_threshold=self.duplicate_iou_spin.value(),
                 track_iou=self.track_iou_spin.value(),
                 track_timeout_ms=self.track_timeout_spin.value(),
+                min_track_frames=self.min_track_frames_spin.value(),
+                min_track_travel_ratio=self.min_track_travel_spin.value(),
+                min_track_directionality=self.min_track_directionality_spin.value(),
+                min_defect_frames=self.min_defect_frames_spin.value(),
+                presence_line_axis=self.presence_line_axis_combo.currentText(),
+                presence_line_ratio=self.presence_line_ratio_spin.value(),
+                presence_direction=self.presence_direction_combo.currentText(),
+                max_track_gap_ms=self.max_track_gap_spin.value(),
+                presence_clear_ms=self.presence_clear_spin.value(),
                 fire_delay_s=self.fire_delay_spin.value(),
                 merge_window_ms=self.merge_window_spin.value(),
                 min_fire_interval_ms=self.min_fire_interval_spin.value(),
@@ -601,6 +659,9 @@ if PYQT_AVAILABLE:
                 trigger_pin=self.trigger_pin_input.text().strip() or defaults.trigger_pin,
                 trigger_duration=self.trigger_duration_spin.value(),
                 trigger_min_gap=self.trigger_gap_spin.value(),
+                trigger_max_queue_age_ms=self.trigger_max_queue_age_spin.value(),
+                trigger_max_lateness_ms=self.trigger_max_lateness_spin.value(),
+                max_frame_age_ms=self.max_frame_age_spin.value(),
                 live_preview_fps=self.live_preview_fps_spin.value(),
                 db_path=self.db_path_input.text().strip() or defaults.db_path,
                 simulate_gpio=self.simulate_gpio_checkbox.isChecked(),
@@ -662,7 +723,7 @@ if PYQT_AVAILABLE:
         # -- final verdict banner --------------------------------------------
 
         def _style_verdict(self, result: str | None) -> None:
-            base = "font-size: 22pt; font-weight: 800; border-radius: 6px; padding: 8px;"
+            base = "font-size: 15pt; font-weight: 800; border-radius: 6px; padding: 8px;"
             if result == "reject":
                 colors = "background-color: #b71c1c; color: white;"
             elif result == "pass":
@@ -674,11 +735,11 @@ if PYQT_AVAILABLE:
         def _update_verdict(self, record) -> None:
             cameras = ",".join(str(index) for index in record.flagged_cameras or record.cameras) or "-"
             text = (
-                f"CAP {record.event_id}: {record.result.upper()} — "
+                f"CAP {record.event_id}: {record.result.upper()}\n"
                 f"{format_prediction_text(record.class_name, record.confidence, digits=2)} (cam {cameras})"
             )
             if record.fire_suppressed:
-                text += " · fire deduped"
+                text += "\nfire deduped"
             self.verdict_label.setText(text)
             self._style_verdict(record.result)
 
@@ -690,7 +751,7 @@ if PYQT_AVAILABLE:
                 self._update_preview(changes["latest_preview"])
             if changes["history_records"]:
                 self._update_verdict(changes["history_records"][-1])
-                self._load_rejects_table()
+                self._load_history_table()
             if changes["latest_performance"] is not None:
                 self._update_performance(changes["latest_performance"])
             if changes["error"] is not None or changes["stopped"]:
@@ -719,26 +780,39 @@ if PYQT_AVAILABLE:
             self.metric_labels["capture_fps"].setText(_format_tuple(snapshot.capture_fps_by_camera))
             self.metric_labels["inference_ms"].setText(_format_tuple(snapshot.inference_ms_by_camera))
 
-        def _load_rejects_table(self) -> None:
-            rows = self.repository.fetch_rejects()
-            self.rejects_table.setRowCount(len(rows))
+        def _load_history_table(self) -> None:
+            rows = self.repository.fetch_history()
+            self.history_table.setRowCount(len(rows))
             for row_index, row in enumerate(rows):
+                is_reject = row.get("result") == "reject"
+                # Rejects show the cameras that flagged the defect; pass caps
+                # show every camera that saw the cap.
+                cameras_key = "flagged_cameras_json" if is_reject else "cameras_json"
                 try:
-                    cameras = ", ".join(str(value) for value in json.loads(row.get("flagged_cameras_json") or "[]"))
+                    cameras = ", ".join(str(value) for value in json.loads(row.get(cameras_key) or "[]"))
                 except (TypeError, ValueError):
                     cameras = "-"
+                fire_time = "-"
+                if is_reject:
+                    fire_time = (
+                        row.get("actual_fire_time")
+                        or row.get("requested_fire_time")
+                        or ("deduped" if row.get("fire_suppressed") else "-")
+                    )
                 values = [
+                    row.get("event_id"),
                     row.get("recorded_at"),
                     row.get("result"),
                     row.get("class_name"),
                     _format_float(row.get("confidence")),
                     cameras or "-",
-                    row.get("actual_fire_time")
-                    or row.get("requested_fire_time")
-                    or ("deduped" if row.get("fire_suppressed") else "-"),
+                    fire_time,
                 ]
                 for column, value in enumerate(values):
-                    self.rejects_table.setItem(row_index, column, QTableWidgetItem("" if value is None else str(value)))
+                    item = QTableWidgetItem("" if value is None else str(value))
+                    if column == 2:
+                        item.setForeground(QColor("#d32f2f") if is_reject else QColor("#2e7d32"))
+                    self.history_table.setItem(row_index, column, item)
 
         def closeEvent(self, event: QCloseEvent) -> None:
             if self.controller.is_running:

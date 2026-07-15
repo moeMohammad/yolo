@@ -113,6 +113,44 @@ def preprocess(frame, model_imgsz: int):
     }
 
 
+def _box_iou(box_a, box_b) -> float:
+    ax1, ay1, ax2, ay2 = (float(value) for value in box_a[:4])
+    bx1, by1, bx2, by2 = (float(value) for value in box_b[:4])
+    inter_w = max(0.0, min(ax2, bx2) - max(ax1, bx1))
+    inter_h = max(0.0, min(ay2, by2) - max(ay1, by1))
+    intersection = inter_w * inter_h
+    if intersection <= 0.0:
+        return 0.0
+    area_a = max(0.0, ax2 - ax1) * max(0.0, ay2 - ay1)
+    area_b = max(0.0, bx2 - bx1) * max(0.0, by2 - by1)
+    union = area_a + area_b - intersection
+    return 0.0 if union <= 0.0 else intersection / union
+
+
+def deduplicate_boxes(boxes, *, iou_threshold: float = 0.65):
+    """Collapse overlapping end-to-end output rows into one observation.
+
+    ``dirtv7.onnx`` exposes a 300-row end-to-end output and its metadata says
+    ``nms: False``. Letting overlapping rows through creates parallel tracks
+    for one visible object. Group class-agnostically because conflicting class
+    rows can still describe the same cap, then retain the highest-confidence
+    row; temporal track voting decides the final class.
+    """
+
+    groups: list[list[list[float]]] = []
+    for raw_box in boxes:
+        candidate = [float(value) for value in raw_box[:5]] + [int(raw_box[5])]
+        for group in groups:
+            if any(_box_iou(candidate, existing) >= float(iou_threshold) for existing in group):
+                group.append(candidate)
+                break
+        else:
+            groups.append([candidate])
+    selected = [max(group, key=lambda box: float(box[4])) for group in groups]
+    selected.sort(key=lambda box: float(box[4]), reverse=True)
+    return selected
+
+
 def postprocess(output, preprocess_meta, conf_threshold: float):
     """Decode the model output into pixel-space boxes, filtering by confidence.
 
