@@ -37,6 +37,31 @@ Threshold provenance: the cap-level sweep in
 update `frame_dirt_threshold` / `track_dirt_threshold` whenever either model
 is retrained — thresholds are model-specific.
 
+## Video-validated revision (Jul 19, 2026)
+
+Validating on real conveyor recordings (`recorded_videos/`, 30 fps true speed
+after the `-itsscale 2` remux) changed three things:
+
+1. **Rig geometry defaults.** Caps travel right → left (negative x) on the RAW
+   frames of BOTH cameras. Defaults are now `mirror_cameras=(False, False)`,
+   `presence_direction="negative"`. The old `(False, True)`/`"positive"`
+   defaults made every camera-0 track fail the directionality gate — the cause
+   of the "no caps detected" live run.
+2. **Classify band** (`classify_band_ratio`, default 0.60): only frames whose
+   box center sits in the central 60% of the frame along the belt axis are
+   classified. Entry/exit perspectives are out-of-domain for the classifier
+   and scored spurious P(dirt); edge frames now contribute no evidence.
+3. **v2 classifier.** `dirt_classifier_384.onnx` is retrained
+   (`detectx/script/retrain_classifier_v2.py`, exported under
+   `exported_models/two_stage_v2_*`) with ~2.3k clean video crops added to
+   train and ~3.5k (held-out recording) to val; v1 kept as
+   `dirt_classifier_384_v1_backup.onnx`. Full-pipeline replay
+   (`validate_v7_on_videos.py`): clean recordings **0/353 false rejects**
+   (v1: 235/353); flagged dirt caps show visible dirt, and sampled "missed"
+   dirt-folder caps are visually clean (the dirt folder is known to contain
+   clean caps). Tooling: `harvest_video_transits.py` (crops + per-transit
+   P(dirt)), `sweep_video_thresholds.py` (threshold calibration).
+
 ## Config deltas (everything else identical to v6)
 
 | Key | v6 | v7 |

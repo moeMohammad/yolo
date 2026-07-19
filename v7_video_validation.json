@@ -1,0 +1,5864 @@
+{
+  "config": {
+    "stride": 1,
+    "presence_direction": "negative",
+    "mirror_cameras": [
+      false,
+      false
+    ]
+  },
+  "pairs": [
+    {
+      "frames": 2265,
+      "processed_per_camera": 2265,
+      "wall_s": 168.4,
+      "caps_seen": 48,
+      "rejects": 41,
+      "passes": 7,
+      "fires": 41,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.896,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 2,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.969,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 3,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.974,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 4,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 5,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.982,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 6,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.992,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 7,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.991,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 8,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 9,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.922,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 10,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.888,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 11,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 12,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.914,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 13,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.968,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 14,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.953,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 15,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 16,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.992,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 17,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 18,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 19,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 20,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 21,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.99,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 22,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.863,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 23,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.945,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 24,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 25,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.941,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 26,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 27,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.962,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 28,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.986,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 29,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.947,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 32,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.967,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 33,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.983,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 34,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.99,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 35,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.917,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 36,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.897,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 37,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 38,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.872,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 39,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.94,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 40,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.946,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 41,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.979,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 42,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 43,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 44,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.937,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 45,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.946,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 46,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 47,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.942,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 48,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.997,
+          "flagged_cameras": []
+        }
+      ],
+      "truth": "clean",
+      "recording": "20260718_200132_126_recording"
+    },
+    {
+      "frames": 1796,
+      "processed_per_camera": 1796,
+      "wall_s": 111.4,
+      "caps_seen": 41,
+      "rejects": 40,
+      "passes": 1,
+      "fires": 40,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.974,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 2,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 3,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 4,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 5,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.974,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 6,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.939,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 7,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 8,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 9,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.956,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 10,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.983,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 11,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 12,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.962,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 13,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.99,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 14,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 15,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.99,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 16,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 17,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.969,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 18,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.855,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 19,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.936,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 20,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 21,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.99,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 22,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.909,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 23,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.908,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 24,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 25,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.94,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 26,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 27,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.923,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 28,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 29,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 30,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.978,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 31,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 32,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.957,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 33,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 34,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.939,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 35,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.972,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 36,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.954,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 37,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.922,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 38,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 39,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 40,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.871,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 41,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.928,
+          "flagged_cameras": [
+            1
+          ]
+        }
+      ],
+      "truth": "clean",
+      "recording": "20260718_200525_276_recording"
+    },
+    {
+      "frames": 1641,
+      "processed_per_camera": 1641,
+      "wall_s": 100.4,
+      "caps_seen": 50,
+      "rejects": 47,
+      "passes": 3,
+      "fires": 47,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.893,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 2,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.948,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 3,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.962,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 4,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.905,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 5,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 6,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.906,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 7,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.98,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 8,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.945,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 9,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.908,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 10,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 11,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.914,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 12,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 13,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.955,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 14,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.907,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 15,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.891,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 16,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 17,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.956,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 18,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.98,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 19,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.845,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 20,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 21,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 22,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 23,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.897,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 24,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.789,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 25,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.973,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 26,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.932,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 27,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 28,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.96,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 29,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.841,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.999,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.971,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 32,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.866,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 33,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.971,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 34,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.868,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 35,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 36,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.903,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 37,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.932,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 38,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.851,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 39,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.965,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 40,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 41,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.954,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 42,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.897,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 43,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.958,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 44,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.931,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 45,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.937,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 46,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.947,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 47,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.817,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 48,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 49,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 50,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.941,
+          "flagged_cameras": [
+            1
+          ]
+        }
+      ],
+      "truth": "clean",
+      "recording": "20260718_200814_927_recording"
+    },
+    {
+      "frames": 8408,
+      "processed_per_camera": 8408,
+      "wall_s": 492.0,
+      "caps_seen": 214,
+      "rejects": 203,
+      "passes": 11,
+      "fires": 203,
+      "suppressed_fires": 0,
+      "filtered_tracks": 6,
+      "filter_sample": [
+        "[FILTER] ignored unconfirmed track camera=0 frames=6 travel=0.06 directionality=0.00 line_crossed=False line_sides=0/6 defect_conf=0.740",
+        "[FILTER] ignored unconfirmed track camera=1 frames=7 travel=0.05 directionality=0.00 line_crossed=False line_sides=0/7 defect_conf=0.879",
+        "[FILTER] ignored unconfirmed track camera=0 frames=9 travel=0.13 directionality=0.06 line_crossed=False line_sides=0/9 defect_conf=0.925"
+      ],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.978,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 2,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 3,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.998,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 4,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.983,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 5,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 6,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.958,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 7,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.962,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 8,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.941,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 9,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.956,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 10,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 11,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.987,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 12,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 13,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.966,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 14,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 15,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 16,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.978,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 17,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 18,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.989,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 19,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.94,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 20,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.943,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 21,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.986,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 22,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 23,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.986,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 24,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.961,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 25,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.889,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 26,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.997,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 27,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 28,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.855,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 29,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.982,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 30,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.902,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 31,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 32,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.98,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 33,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 34,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.998,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 35,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.969,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 36,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.908,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 37,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 38,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.968,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 39,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.957,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 40,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.974,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 41,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.948,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 42,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.963,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 43,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 44,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.962,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 45,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.99,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 46,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 47,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.975,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 48,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 49,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 50,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.987,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 51,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.952,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 52,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.962,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 53,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 54,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 55,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.925,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 56,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.972,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 57,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.964,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 58,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.934,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 59,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.965,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 60,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 61,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.962,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 62,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.88,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 63,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 64,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.998,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 65,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.905,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 66,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.977,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 67,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.974,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 68,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 69,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.965,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 70,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.916,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 71,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 72,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.999,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 73,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.986,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 74,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 75,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 76,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.968,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 77,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 78,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 79,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.979,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 80,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.92,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 81,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 82,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.93,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 83,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.987,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 84,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.941,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 85,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.97,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 86,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.983,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 87,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.948,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 88,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.974,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 89,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 90,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.97,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 91,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.965,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 92,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 93,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 94,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.962,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 95,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.998,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 96,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.973,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 97,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.89,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 98,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 99,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.99,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 100,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.964,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 101,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 102,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.934,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 103,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.971,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 104,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.953,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 105,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.967,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 106,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.977,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 107,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.893,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 108,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.885,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 109,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.87,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 110,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 111,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 112,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.967,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 113,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.98,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 114,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 115,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 116,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 117,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.952,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 118,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.989,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 119,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.979,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 120,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 121,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.949,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 122,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.883,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 123,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.975,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 124,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.959,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 125,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.963,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 126,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 127,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.973,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 128,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.895,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 129,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.989,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 130,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.986,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 131,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.983,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 132,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.98,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 133,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.915,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 134,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 135,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 136,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 137,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 138,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.906,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 139,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 140,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 141,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 142,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.977,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 143,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.986,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 144,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 145,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 146,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.992,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 147,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 148,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 149,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 150,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.958,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 151,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.936,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 152,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 153,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.975,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 154,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.978,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 155,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.958,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 156,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.957,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 157,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 158,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 159,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 160,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.968,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 161,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 162,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 163,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 164,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 165,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 166,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.959,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 167,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.964,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 168,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.962,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 169,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.963,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 170,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.922,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 171,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.894,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 172,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.956,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 173,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.963,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 174,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 175,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 176,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.896,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 177,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.969,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 178,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 179,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.982,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 180,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 181,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.952,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 182,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.943,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 183,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 184,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 185,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.942,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 186,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 187,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 188,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.926,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 189,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.973,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 190,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.944,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 191,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.924,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 192,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.973,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 193,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.977,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 194,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.983,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 195,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.982,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 196,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.969,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 197,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.977,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 198,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.95,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 199,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 200,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.969,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 201,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 202,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.963,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 203,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.938,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 204,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.972,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 205,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.999,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 206,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.987,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 207,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.964,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 208,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 209,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 210,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.958,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 211,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 212,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 213,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.977,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 214,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.974,
+          "flagged_cameras": [
+            0
+          ]
+        }
+      ],
+      "truth": "clean",
+      "recording": "20260718_201540_958_recording"
+    },
+    {
+      "frames": 1864,
+      "processed_per_camera": 1864,
+      "wall_s": 110.6,
+      "caps_seen": 56,
+      "rejects": 54,
+      "passes": 2,
+      "fires": 54,
+      "suppressed_fires": 0,
+      "filtered_tracks": 2,
+      "filter_sample": [
+        "[FILTER] ignored unconfirmed track camera=0 frames=3 travel=0.04 directionality=0.16 line_crossed=False line_sides=0/3 defect_conf=1.000",
+        "[FILTER] ignored unconfirmed track camera=1 frames=4 travel=0.15 directionality=0.10 line_crossed=False line_sides=0/4 defect_conf=0.992"
+      ],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 2,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 3,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.931,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 4,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.912,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 5,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 6,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 7,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 8,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 9,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 10,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.966,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 11,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 12,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 13,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 14,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 15,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 16,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 17,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 18,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 19,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 20,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 21,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 22,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 23,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.979,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 24,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.979,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 25,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 26,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.989,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 27,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.938,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 28,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 29,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 30,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.934,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 31,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.983,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 32,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 33,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.895,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 34,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 35,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 36,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 37,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.95,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 38,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.963,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 39,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 40,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 41,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 42,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 43,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 44,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 45,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.935,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 46,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 47,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 48,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 49,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 50,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.964,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 51,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 52,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 53,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 54,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.971,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 55,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 56,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        }
+      ],
+      "truth": "dirt",
+      "recording": "20260718_202810_732_recording"
+    },
+    {
+      "frames": 1445,
+      "processed_per_camera": 1445,
+      "wall_s": 88.9,
+      "caps_seen": 56,
+      "rejects": 56,
+      "passes": 0,
+      "fires": 56,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 2,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 3,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 4,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 5,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 6,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 7,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.965,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 8,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 9,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 10,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 11,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 12,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.891,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 13,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 14,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 15,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 16,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 17,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.986,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 18,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 19,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.979,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 20,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 21,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.963,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 22,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 23,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.98,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 24,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 25,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.941,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 26,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.925,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 27,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.966,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 28,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.982,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 29,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.971,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 30,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 31,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 32,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 33,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 34,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.982,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 35,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 36,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.948,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 37,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.936,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 38,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.966,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 39,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 40,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 41,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.979,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 42,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 43,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 44,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 45,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 46,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 47,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.942,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 48,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 49,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.971,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 50,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 51,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 52,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 53,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 54,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.99,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 55,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.959,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 56,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.97,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        }
+      ],
+      "truth": "dirt",
+      "recording": "20260718_202955_984_recording"
+    },
+    {
+      "frames": 4737,
+      "processed_per_camera": 4737,
+      "wall_s": 284.2,
+      "caps_seen": 145,
+      "rejects": 142,
+      "passes": 3,
+      "fires": 142,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.983,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 2,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.959,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 3,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 4,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 5,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 6,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 7,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 8,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 9,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.989,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 10,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 11,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.92,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 12,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 13,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 14,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 15,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 16,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.977,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 17,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 18,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 19,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 20,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 21,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.93,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 22,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.893,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 23,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 24,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 25,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 26,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 27,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.988,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 28,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 29,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.956,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.956,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 32,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.93,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 33,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 34,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.949,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 35,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 0.976,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 36,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.986,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 37,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.968,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 38,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.948,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 39,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 40,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 41,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 42,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.963,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 43,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 44,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.989,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 45,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.98,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 46,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.982,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 47,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 48,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 49,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.97,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 50,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 51,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 52,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.977,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 53,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 54,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 55,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 56,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 57,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 58,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.989,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 59,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.987,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 60,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.989,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 61,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.933,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 62,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.952,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 63,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.978,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 64,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.981,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 65,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 66,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.964,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 67,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 68,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.957,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 69,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.982,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 70,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.819,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 71,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.964,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 72,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.936,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 73,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 74,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.989,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 75,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 76,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.931,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 77,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 78,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 79,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.989,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 80,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.953,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 81,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 82,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 83,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 84,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 85,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.961,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 86,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 87,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 88,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.934,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 89,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 90,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 91,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 92,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 93,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.967,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 94,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 95,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 96,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.951,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 97,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.952,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 98,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.952,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 99,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 100,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.984,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 101,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 102,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.95,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 103,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 104,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 105,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 106,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 107,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.964,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 108,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.982,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 109,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.978,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 110,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 111,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.944,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 112,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 113,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 114,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.967,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 115,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 116,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.994,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 117,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.985,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 118,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.99,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 119,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.965,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 120,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 121,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.987,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 122,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.999,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 123,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 124,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 125,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.951,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 126,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.958,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 127,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 128,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.997,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 129,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.983,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 130,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 131,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.998,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 132,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.952,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 133,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 134,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.991,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 135,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 136,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.829,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 137,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 138,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.972,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 139,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.992,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 140,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 141,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.869,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 142,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 143,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.972,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 144,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.976,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 145,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.878,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        }
+      ],
+      "truth": "dirt",
+      "recording": "20260718_203135_424_recording"
+    }
+  ],
+  "totals": {
+    "clean_caps": 353,
+    "clean_rejects": 331,
+    "clean_passes": 22,
+    "dirt_caps": 257,
+    "dirt_rejects": 252,
+    "dirt_passes": 5
+  }
+}

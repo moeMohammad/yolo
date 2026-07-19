@@ -45,7 +45,12 @@ GPIO_BACKENDS = ("rpi", "jetson")
 DEFAULT_MODEL = "cap_detector_640.onnx"
 DEFAULT_CLASSIFIER_MODEL = "dirt_classifier_384.onnx"
 DEFAULT_CAMERAS = ("0", "2")
-DEFAULT_MIRROR_CAMERAS = (False, True)
+# Measured on the recorded footage (Jul 2026): caps travel right -> left
+# (negative x) on the RAW frames of BOTH cameras, so nothing is mirrored and
+# the belt direction is negative. With the old (False, True)/positive
+# defaults every camera-0 track failed the directionality gate -> the June
+# live run saw no caps at all.
+DEFAULT_MIRROR_CAMERAS = (False, False)
 DEFAULT_RESOLUTION = (960, 600)
 DEFAULT_TARGET_FPS = 60
 DEFAULT_EXPOSURE = 8
@@ -61,6 +66,11 @@ DEFAULT_TRACK_DIRT_THRESHOLD = 0.45
 # Crop margin around the detector box before square-padding, matching the
 # training-crop generation in build_two_stage_dataset.py exactly.
 DEFAULT_CROP_MARGIN = 0.10
+# Only classify frames whose box center lies in the central band of the frame
+# along the belt axis (fraction of the frame dimension). The classifier was
+# trained on center-frame captures; entry/exit perspectives are out-of-domain
+# and score spuriously high P(dirt), so edge frames contribute no evidence.
+DEFAULT_CLASSIFY_BAND_RATIO = 0.60
 # Classify at most this many boxes per frame (normally one cap is visible).
 DEFAULT_MAX_CLASSIFIED_BOXES = 2
 DEFAULT_DUPLICATE_IOU_THRESHOLD = 0.65
@@ -77,7 +87,7 @@ DEFAULT_MIN_TRACK_DIRECTIONALITY = 0.60
 DEFAULT_MIN_DEFECT_FRAMES = 3
 DEFAULT_PRESENCE_LINE_AXIS = "x"
 DEFAULT_PRESENCE_LINE_RATIO = 0.50
-DEFAULT_PRESENCE_DIRECTION = "positive"
+DEFAULT_PRESENCE_DIRECTION = "negative"
 DEFAULT_MAX_TRACK_GAP_MS = 250.0
 # Near-simultaneous line crossings in the same perpendicular image band retain
 # one camera-local presence-cycle id, making actuation idempotent across
@@ -140,6 +150,7 @@ class RuntimeConfig:
     frame_dirt_threshold: float = DEFAULT_FRAME_DIRT_THRESHOLD
     track_dirt_threshold: float = DEFAULT_TRACK_DIRT_THRESHOLD
     crop_margin: float = DEFAULT_CROP_MARGIN
+    classify_band_ratio: float = DEFAULT_CLASSIFY_BAND_RATIO
     max_classified_boxes: int = DEFAULT_MAX_CLASSIFIED_BOXES
     duplicate_iou_threshold: float = DEFAULT_DUPLICATE_IOU_THRESHOLD
     track_iou: float = DEFAULT_TRACK_IOU
@@ -235,6 +246,8 @@ def validate_config(config: RuntimeConfig) -> None:
         raise ValueError("track_dirt_threshold must be between 0 and 1")
     if not 0.0 <= float(config.crop_margin) <= 1.0:
         raise ValueError("crop_margin must be between 0 and 1")
+    if not 0.0 < float(config.classify_band_ratio) <= 1.0:
+        raise ValueError("classify_band_ratio must be greater than 0 and at most 1")
     if int(config.max_classified_boxes) < 1:
         raise ValueError("max_classified_boxes must be at least 1")
     if config.classifier_imgsz is not None and int(config.classifier_imgsz) <= 0:
@@ -306,6 +319,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--frame-dirt-threshold", type=float, default=defaults.frame_dirt_threshold)
     parser.add_argument("--track-dirt-threshold", type=float, default=defaults.track_dirt_threshold)
     parser.add_argument("--crop-margin", type=float, default=defaults.crop_margin)
+    parser.add_argument("--classify-band-ratio", type=float, default=defaults.classify_band_ratio)
     parser.add_argument("--max-classified-boxes", type=int, default=defaults.max_classified_boxes)
     parser.add_argument("--duplicate-iou-threshold", type=float, default=defaults.duplicate_iou_threshold)
     parser.add_argument("--track-iou", type=float, default=defaults.track_iou)
@@ -357,6 +371,7 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         frame_dirt_threshold=float(args.frame_dirt_threshold),
         track_dirt_threshold=float(args.track_dirt_threshold),
         crop_margin=float(args.crop_margin),
+        classify_band_ratio=float(args.classify_band_ratio),
         max_classified_boxes=int(args.max_classified_boxes),
         duplicate_iou_threshold=float(args.duplicate_iou_threshold),
         track_iou=float(args.track_iou),

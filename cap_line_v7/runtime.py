@@ -25,6 +25,7 @@ from .actuation import NullGPIOOutputPin, RejectScheduler
 from .config import RuntimeConfig, class_name, validate_config
 from .decision import CapEventManager
 from .model import (
+    box_in_classify_band,
     classify_dirt_probability,
     create_onnx_session,
     deduplicate_boxes,
@@ -357,6 +358,8 @@ class CameraWorker:
         classifier_input_name: str,
         classifier_imgsz: int,
         crop_margin: float,
+        classify_band_ratio: float,
+        presence_line_axis: str,
         frame_dirt_threshold: float,
         max_classified_boxes: int,
         detect_threshold: float,
@@ -383,6 +386,8 @@ class CameraWorker:
         self.classifier_input_name = classifier_input_name
         self.classifier_imgsz = int(classifier_imgsz)
         self.crop_margin = float(crop_margin)
+        self.classify_band_ratio = float(classify_band_ratio)
+        self.presence_line_axis = "y" if str(presence_line_axis).lower() == "y" else "x"
         self.frame_dirt_threshold = float(frame_dirt_threshold)
         self.max_classified_boxes = max(1, int(max_classified_boxes))
         self.classify_fn = classify_fn
@@ -526,9 +531,21 @@ class CameraWorker:
             # classification yields None (no dirt evidence for that frame) —
             # the conservative direction for actuation.
             dirt_probs: list[float | None] = []
+            try:
+                capture_frame_size = (int(captured.frame.shape[1]), int(captured.frame.shape[0]))
+            except Exception:
+                capture_frame_size = None
             for box_index, unique_box in enumerate(unique_boxes):
                 if box_index >= self.max_classified_boxes:
                     dirt_probs.append(None)
+                    continue
+                if capture_frame_size is not None and not box_in_classify_band(
+                    unique_box,
+                    capture_frame_size,
+                    axis=self.presence_line_axis,
+                    band_ratio=self.classify_band_ratio,
+                ):
+                    dirt_probs.append(None)  # edge perspective: no dirt evidence
                     continue
                 try:
                     dirt_probs.append(
@@ -689,6 +706,8 @@ def run_detection(
             classifier_input_name=classifier_input_names[index],
             classifier_imgsz=classifier_imgsz,
             crop_margin=config.crop_margin,
+            classify_band_ratio=config.classify_band_ratio,
+            presence_line_axis=config.presence_line_axis,
             frame_dirt_threshold=config.frame_dirt_threshold,
             max_classified_boxes=config.max_classified_boxes,
             detect_threshold=config.detect_threshold,

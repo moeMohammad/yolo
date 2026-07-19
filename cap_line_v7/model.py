@@ -224,6 +224,22 @@ def postprocess(output, preprocess_meta, conf_threshold: float):
 # Stage 2: crop classifier.
 # --------------------------------------------------------------------------- #
 
+def box_in_classify_band(box, frame_size, *, axis: str = "x", band_ratio: float = 0.60) -> bool:
+    """Whether the box center sits in the central band of the frame.
+
+    The classifier was trained on center-frame captures; near the frame edges
+    the entry/exit perspective is out-of-domain and produces spurious high
+    P(dirt). Frames outside the band are not classified (no dirt evidence).
+    """
+
+    width, height = frame_size
+    dimension = float(height if str(axis).lower() == "y" else width)
+    x1, y1, x2, y2 = (float(value) for value in box[:4])
+    center = (y1 + y2) / 2.0 if str(axis).lower() == "y" else (x1 + x2) / 2.0
+    half_band = dimension * float(band_ratio) / 2.0
+    return abs(center - dimension / 2.0) <= half_band
+
+
 def crop_cap_region(frame, box, *, margin: float = 0.10, pad_color=(114, 114, 114)):
     """Crop the cap box (+margin) from the original frame and square-pad it.
 

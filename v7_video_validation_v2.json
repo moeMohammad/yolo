@@ -1,0 +1,4470 @@
+{
+  "config": {
+    "stride": 1,
+    "presence_direction": "negative",
+    "mirror_cameras": [
+      false,
+      false
+    ]
+  },
+  "pairs": [
+    {
+      "frames": 2265,
+      "processed_per_camera": 2265,
+      "wall_s": 122.2,
+      "caps_seen": 48,
+      "rejects": 0,
+      "passes": 48,
+      "fires": 0,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 2,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 3,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 4,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 5,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 6,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 7,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 8,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 9,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 10,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 11,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 12,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 13,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 14,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 15,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 16,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 17,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 18,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 19,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 20,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 21,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 22,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 23,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 24,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 25,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 26,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 27,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 28,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 29,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 32,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 33,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 34,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 35,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 36,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 37,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 38,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 39,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 40,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 41,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 42,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 43,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 44,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 45,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 46,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 47,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 48,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        }
+      ],
+      "truth": "clean",
+      "recording": "20260718_200132_126_recording"
+    },
+    {
+      "frames": 1796,
+      "processed_per_camera": 1796,
+      "wall_s": 97.1,
+      "caps_seen": 41,
+      "rejects": 0,
+      "passes": 41,
+      "fires": 0,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 2,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 3,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 4,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 5,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 6,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 7,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 8,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 9,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 10,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 11,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 12,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 13,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 14,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 15,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 16,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 17,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 18,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 19,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 20,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 21,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 22,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 23,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 24,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 25,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 26,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 27,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 28,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 29,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 32,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 33,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 34,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 35,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 36,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 37,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 38,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 39,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 40,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 41,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        }
+      ],
+      "truth": "clean",
+      "recording": "20260718_200525_276_recording"
+    },
+    {
+      "frames": 1641,
+      "processed_per_camera": 1641,
+      "wall_s": 91.3,
+      "caps_seen": 50,
+      "rejects": 0,
+      "passes": 50,
+      "fires": 0,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 2,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 3,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 4,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 5,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 6,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 7,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 8,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 9,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 10,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 11,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 12,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 13,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 14,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 15,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 16,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 17,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 18,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 19,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 20,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 21,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 22,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 23,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 24,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 25,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 26,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 27,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 28,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 29,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 32,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 33,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 34,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 35,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 36,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 37,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 38,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 39,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 40,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 41,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 42,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 43,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 44,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 45,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 46,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 47,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 48,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 49,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 50,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        }
+      ],
+      "truth": "clean",
+      "recording": "20260718_200814_927_recording"
+    },
+    {
+      "frames": 8408,
+      "processed_per_camera": 8408,
+      "wall_s": 458.5,
+      "caps_seen": 214,
+      "rejects": 0,
+      "passes": 214,
+      "fires": 0,
+      "suppressed_fires": 0,
+      "filtered_tracks": 6,
+      "filter_sample": [
+        "[FILTER] ignored unconfirmed track camera=0 frames=6 travel=0.06 directionality=0.00 line_crossed=False line_sides=0/6 defect_conf=0.000",
+        "[FILTER] ignored unconfirmed track camera=1 frames=7 travel=0.05 directionality=0.00 line_crossed=False line_sides=0/7 defect_conf=0.000",
+        "[FILTER] ignored unconfirmed track camera=0 frames=9 travel=0.13 directionality=0.06 line_crossed=False line_sides=0/9 defect_conf=0.581"
+      ],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 2,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 3,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 4,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 5,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 6,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 7,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 8,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 9,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 10,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 11,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 12,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 13,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 14,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 15,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 16,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 17,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 18,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 19,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 20,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 21,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 22,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 23,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 24,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 25,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 26,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 27,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 28,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 29,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 32,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 33,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 34,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 35,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 36,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 37,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 38,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 39,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 40,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 41,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 42,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 43,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 44,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 45,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 46,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 47,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 48,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 49,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 50,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 51,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 52,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 53,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 54,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 55,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 56,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 57,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 58,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 59,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 60,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 61,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 62,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 63,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 64,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 65,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 66,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 67,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 68,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 69,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 70,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 71,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 72,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 73,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 74,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 75,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 76,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 77,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 78,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 79,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 80,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 81,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 82,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 83,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 84,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 85,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 86,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 87,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 88,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 89,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 90,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 91,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 92,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 93,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 94,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 95,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 96,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 97,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 98,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 99,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 100,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 101,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 102,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 103,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 104,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 105,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 106,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 107,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 108,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 109,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 110,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 111,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 112,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 113,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 114,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 115,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 116,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 117,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 118,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 119,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 120,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 121,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 122,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 123,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 124,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 125,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 126,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 127,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 128,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 129,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 130,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 131,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 132,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 133,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 134,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 135,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 136,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 137,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 138,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 139,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 140,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 141,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 142,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 143,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 144,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 145,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 146,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 147,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 148,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 149,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 150,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 151,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 152,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 153,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 154,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 155,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 156,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 157,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 158,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 159,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 160,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 161,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 162,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 163,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 164,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 165,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 166,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 167,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 168,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 169,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 170,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 171,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 172,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 173,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 174,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 175,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 176,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 177,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 178,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 179,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 180,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 181,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 182,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 183,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 184,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 185,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 186,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 187,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 188,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 189,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 190,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 191,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 192,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 193,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 194,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 195,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 196,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 197,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 198,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 199,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 200,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 201,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 202,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 203,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 204,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 205,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 206,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 207,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 208,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 209,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 210,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 211,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 212,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 213,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 214,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        }
+      ],
+      "truth": "clean",
+      "recording": "20260718_201540_958_recording"
+    },
+    {
+      "frames": 1864,
+      "processed_per_camera": 1864,
+      "wall_s": 103.2,
+      "caps_seen": 56,
+      "rejects": 8,
+      "passes": 48,
+      "fires": 8,
+      "suppressed_fires": 0,
+      "filtered_tracks": 2,
+      "filter_sample": [
+        "[FILTER] ignored unconfirmed track camera=0 frames=3 travel=0.04 directionality=0.16 line_crossed=False line_sides=0/3 defect_conf=0.000",
+        "[FILTER] ignored unconfirmed track camera=1 frames=4 travel=0.15 directionality=0.10 line_crossed=False line_sides=0/4 defect_conf=0.000"
+      ],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 2,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 3,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 4,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 5,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 6,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 7,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 8,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 9,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 10,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 11,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 12,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.995,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 13,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 14,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 15,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 16,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 17,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 18,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 19,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 20,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 21,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 22,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 23,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 24,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 25,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 26,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 27,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 28,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 29,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 32,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 33,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 34,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 35,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 36,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 37,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 38,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 39,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 40,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 41,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 42,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 43,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 44,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 45,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 46,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 47,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 48,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 49,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 50,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 51,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 52,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 53,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 54,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 55,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 56,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        }
+      ],
+      "truth": "dirt",
+      "recording": "20260718_202810_732_recording"
+    },
+    {
+      "frames": 1445,
+      "processed_per_camera": 1445,
+      "wall_s": 82.1,
+      "caps_seen": 56,
+      "rejects": 8,
+      "passes": 48,
+      "fires": 8,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.993,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 2,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 3,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 4,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 5,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 6,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 7,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 8,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 9,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 10,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 11,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 12,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 13,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 14,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 15,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 16,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 17,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 18,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 19,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 20,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 21,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 22,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 23,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 24,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 25,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 26,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 27,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 28,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 29,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 32,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 33,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 34,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 35,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 36,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 37,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 38,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 39,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 40,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 41,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 42,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 43,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 44,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 45,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 46,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 47,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 48,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 49,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 50,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 51,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 52,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 53,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 54,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 55,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 56,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        }
+      ],
+      "truth": "dirt",
+      "recording": "20260718_202955_984_recording"
+    },
+    {
+      "frames": 4737,
+      "processed_per_camera": 4737,
+      "wall_s": 263.0,
+      "caps_seen": 145,
+      "rejects": 9,
+      "passes": 136,
+      "fires": 9,
+      "suppressed_fires": 0,
+      "filtered_tracks": 0,
+      "filter_sample": [],
+      "events": [
+        {
+          "event_id": 1,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 2,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 3,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 4,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 5,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 6,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 7,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 8,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 9,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 10,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 11,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 12,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 13,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.996,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 14,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 15,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 16,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 17,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 18,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 19,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 20,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 21,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 22,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 23,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 24,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 25,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 26,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 27,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 28,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 29,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 30,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 31,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 32,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 33,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 34,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 35,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 36,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 37,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 38,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 39,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 40,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 41,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 42,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 43,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 44,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 45,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 46,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 47,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 48,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 49,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 50,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 51,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 52,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 53,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 54,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 55,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 56,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 57,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 58,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 59,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 60,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 61,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 62,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 63,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 64,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 65,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 66,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 67,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 68,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 69,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 70,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 71,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 72,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 73,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 74,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 75,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 0.986,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 76,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 77,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 78,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            1
+          ]
+        },
+        {
+          "event_id": 79,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 80,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 81,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 82,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 83,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 84,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 85,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 86,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 87,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 88,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 89,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 90,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 91,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 92,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 93,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 94,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0
+          ]
+        },
+        {
+          "event_id": 95,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 96,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 97,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 98,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 99,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 100,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 101,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 102,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 103,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 104,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 105,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 106,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 107,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 108,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 109,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 110,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 111,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 112,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 113,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 114,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 115,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 116,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 117,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 118,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 119,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 120,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 121,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 122,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 123,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 124,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 125,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 126,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 127,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 128,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 129,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 130,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 131,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 132,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 133,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 134,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 135,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 136,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 137,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 138,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 139,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 140,
+          "result": "reject",
+          "class": "dirt_defect",
+          "confidence": 1.0,
+          "flagged_cameras": [
+            0,
+            1
+          ]
+        },
+        {
+          "event_id": 141,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 142,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 143,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 144,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        },
+        {
+          "event_id": 145,
+          "result": "pass",
+          "class": "undefected",
+          "confidence": 1.0,
+          "flagged_cameras": []
+        }
+      ],
+      "truth": "dirt",
+      "recording": "20260718_203135_424_recording"
+    }
+  ],
+  "totals": {
+    "clean_caps": 353,
+    "clean_rejects": 0,
+    "clean_passes": 353,
+    "dirt_caps": 257,
+    "dirt_rejects": 25,
+    "dirt_passes": 232
+  }
+}

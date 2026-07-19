@@ -486,6 +486,7 @@ if PYQT_AVAILABLE:
             self.frame_dirt_threshold_spin = QDoubleSpinBox(); self.frame_dirt_threshold_spin.setRange(0, 1); self.frame_dirt_threshold_spin.setDecimals(3)
             self.track_dirt_threshold_spin = QDoubleSpinBox(); self.track_dirt_threshold_spin.setRange(0, 1); self.track_dirt_threshold_spin.setDecimals(3)
             self.crop_margin_spin = QDoubleSpinBox(); self.crop_margin_spin.setRange(0, 1); self.crop_margin_spin.setDecimals(3)
+            self.classify_band_spin = QDoubleSpinBox(); self.classify_band_spin.setRange(0.05, 1); self.classify_band_spin.setDecimals(3)
             self.max_classified_boxes_spin = QSpinBox(); self.max_classified_boxes_spin.setRange(1, 16)
             self.duplicate_iou_spin = QDoubleSpinBox(); self.duplicate_iou_spin.setRange(0, 1); self.duplicate_iou_spin.setDecimals(3)
             self.track_iou_spin = QDoubleSpinBox(); self.track_iou_spin.setRange(0, 1); self.track_iou_spin.setDecimals(3)
@@ -531,6 +532,7 @@ if PYQT_AVAILABLE:
                 ("Frame Dirt Threshold P(dirt)", self.frame_dirt_threshold_spin),
                 ("Track Dirt Threshold (trimmed mean)", self.track_dirt_threshold_spin),
                 ("Crop Margin", self.crop_margin_spin),
+                ("Classify Band (central frame fraction)", self.classify_band_spin),
                 ("Max Classified Boxes / Frame", self.max_classified_boxes_spin),
                 ("Duplicate Box IOU", self.duplicate_iou_spin),
                 ("Track IOU", self.track_iou_spin),
@@ -593,6 +595,7 @@ if PYQT_AVAILABLE:
             self.frame_dirt_threshold_spin.setValue(config.frame_dirt_threshold)
             self.track_dirt_threshold_spin.setValue(config.track_dirt_threshold)
             self.crop_margin_spin.setValue(config.crop_margin)
+            self.classify_band_spin.setValue(config.classify_band_ratio)
             self.max_classified_boxes_spin.setValue(config.max_classified_boxes)
             self.duplicate_iou_spin.setValue(config.duplicate_iou_threshold)
             self.track_iou_spin.setValue(config.track_iou)
@@ -640,6 +643,7 @@ if PYQT_AVAILABLE:
                 frame_dirt_threshold=self.frame_dirt_threshold_spin.value(),
                 track_dirt_threshold=self.track_dirt_threshold_spin.value(),
                 crop_margin=self.crop_margin_spin.value(),
+                classify_band_ratio=self.classify_band_spin.value(),
                 max_classified_boxes=self.max_classified_boxes_spin.value(),
                 duplicate_iou_threshold=self.duplicate_iou_spin.value(),
                 track_iou=self.track_iou_spin.value(),

@@ -30,6 +30,7 @@ import pytest
 from cap_line_v7.config import RuntimeConfig, validate_config
 from cap_line_v7.decision import CapEventManager
 from cap_line_v7.model import (
+    box_in_classify_band,
     classifier_postprocess,
     crop_cap_region,
     deduplicate_boxes,
@@ -253,6 +254,17 @@ def test_crop_cap_region_rejects_degenerate_boxes():
     assert crop_cap_region(frame, (10.0, 10.0, 12.0, 12.0)) is None
 
 
+def test_classify_band_gates_edge_boxes():
+    frame_size = (960, 600)
+    center_box = (400.0, 100.0, 560.0, 300.0)   # center x = 480
+    edge_box = (820.0, 100.0, 950.0, 300.0)     # center x = 885 (entry zone)
+    assert box_in_classify_band(center_box, frame_size, axis="x", band_ratio=0.60) is True
+    assert box_in_classify_band(edge_box, frame_size, axis="x", band_ratio=0.60) is False
+    assert box_in_classify_band(edge_box, frame_size, axis="x", band_ratio=1.0) is True
+    # y-axis belts gate on the vertical center instead
+    assert box_in_classify_band((0.0, 500.0, 100.0, 590.0), frame_size, axis="y", band_ratio=0.60) is False
+
+
 def test_classifier_postprocess_reads_dirt_from_index_zero():
     assert classifier_postprocess(np.asarray([[0.93, 0.07]])) == pytest.approx(0.93)
 
@@ -462,6 +474,8 @@ def test_camera_worker_classifies_and_feeds_probabilities_to_the_tracker():
         classifier_input_name="images",
         classifier_imgsz=100,
         crop_margin=0.10,
+        classify_band_ratio=1.0,
+        presence_line_axis="x",
         frame_dirt_threshold=0.50,
         max_classified_boxes=2,
         detect_threshold=0.25,
@@ -494,13 +508,14 @@ def test_run_detection_fires_once_for_a_cap_dirty_on_one_camera():
     from cap_line_v7.runtime import run_detection
     from cap_line_v7.types import RuntimeCallbacks
 
+    # Caps travel right -> left on the real rig (negative x, the v7 default).
     dirty_sequence = [
         [[10.0 + offset, 10.0, 50.0 + offset, 50.0, 0.90, 0, 0.92]]
-        for offset in (0.0, 6.0, 12.0, 18.0, 24.0, 30.0)
+        for offset in (30.0, 24.0, 18.0, 12.0, 6.0, 0.0)
     ]
     clean_sequence = [
         [[10.0 + offset, 10.0, 50.0 + offset, 50.0, 0.90, 0, 0.05]]
-        for offset in (0.0, 6.0, 12.0, 18.0, 24.0, 30.0)
+        for offset in (30.0, 24.0, 18.0, 12.0, 6.0, 0.0)
     ]
     cameras = [_ScriptedCamera(dirty_sequence), _ScriptedCamera(clean_sequence)]
 
@@ -570,7 +585,7 @@ def test_run_detection_passes_a_clean_cap_with_one_hallucinated_frame():
     probabilities = [0.05, 0.06, 0.97, 0.05, 0.04, 0.06]  # one spike, never 3 in a row
     spiky_sequence = [
         [[10.0 + offset, 10.0, 50.0 + offset, 50.0, 0.90, 0, probability]]
-        for offset, probability in zip((0.0, 6.0, 12.0, 18.0, 24.0, 30.0), probabilities)
+        for offset, probability in zip((30.0, 24.0, 18.0, 12.0, 6.0, 0.0), probabilities)
     ]
     cameras = [_ScriptedCamera(spiky_sequence), _ScriptedCamera([])]
 
