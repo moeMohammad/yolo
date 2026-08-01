@@ -1,9 +1,8 @@
 """Shared dataclasses and type aliases for the v7 cap-inspection runtime.
 
 Same tiny surface as v4: a captured frame, the per-cap event record that is
-logged once per physical cap, a performance snapshot, and the runtime callbacks
-bundle the UI plugs into. v7 adds ``fire_suppressed`` to the cap record so the
-de-dup refractory is visible in logs/history.
+logged once per physical cap (and updated when asynchronous actuation settles),
+a performance snapshot, and the runtime callbacks bundle the UI plugs into.
 """
 
 from __future__ import annotations
@@ -39,7 +38,7 @@ class CapEventRecord:
 
     event_id: int
     recorded_at: str
-    result: str  # "reject" | "pass"
+    result: str  # "reject" | "pass" | "unknown" when fail-closed is disabled
     class_name: str | None
     confidence: float | None
     cameras: list[int]
@@ -47,6 +46,8 @@ class CapEventRecord:
     requested_fire_time: str | None = None
     actual_fire_time: str | None = None
     fire_suppressed: bool = False
+    inspection_status: str = "valid"  # "valid" | "unknown"
+    fire_status: str = "not_requested"
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,15 @@ class PerfSnapshot:
     gpio_backend: str
     caps_seen: int
     rejects: int
+    filtered_tracks: int = 0
+    unknown_inspections: int = 0
+    stale_results_by_camera: tuple[int, ...] = ()
+    detected_boxes_by_camera: tuple[int, ...] = ()
+    max_detector_confidence_by_camera: tuple[float, ...] = ()
+    detector_providers: tuple[str, ...] = ()
+    classifier_providers: tuple[str, ...] = ()
+    throughput_status: str = "warming_up"
+    throughput_detail: str = ""
 
 
 @dataclass(frozen=True)

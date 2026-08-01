@@ -41,7 +41,7 @@ from .types import Box, CapturedFrame, PerfSnapshot, RuntimeCallbacks
 def resolve_pin_factory(config: RuntimeConfig):
     """Pick the GPIO driver for the configured backend.
 
-    v7 targets the Jetson Nano rig: the default is the untouched Jetson driver
+    v7 targets the Jetson rig: the default is the Jetson.GPIO driver
     from ``gpio_output.py``. The Raspberry Pi driver (gpiozero) stays selectable
     via ``gpio_backend: "rpi"``. ``simulate_gpio`` overrides both.
     """
@@ -62,6 +62,12 @@ CAP_PROP_FRAME_HEIGHT = 4
 CAP_PROP_FPS = 5
 CAP_PROP_BUFFERSIZE = 38
 PERF_EMIT_INTERVAL_S = 0.5
+# Stride replay of the real conveyor footage remained reliable at 7.5
+# processed frames/s per camera and degraded sharply below it. This is an
+# operational floor, not a claim that 7.5 FPS certifies the model.
+MIN_QUALIFIED_PROCESSED_FPS = 7.5
+PERF_HEALTH_WARMUP_S = 5.0
+PERF_WARNING_INTERVAL_S = 10.0
 
 
 class Clock:
@@ -190,7 +196,9 @@ def validate_opened_cameras(cameras, camera_sources, device_paths) -> None:
 # --------------------------------------------------------------------------- #
 
 def _to_box(box) -> Box:
-    return (float(box[0]), float(box[1]), float(box[2]), float(box[3]), float(box[4]), int(box[5]))
+    # Detector-only result: class -1 is an explicit unclassified preview state,
+    # never a clean verdict.
+    return (float(box[0]), float(box[1]), float(box[2]), float(box[3]), float(box[4]), -1)
 
 
 def _display_box(box, p_dirt: float | None, frame_dirt_threshold: float) -> Box:
@@ -198,13 +206,13 @@ def _display_box(box, p_dirt: float | None, frame_dirt_threshold: float) -> Box:
 
     Geometry comes from the detector; class and confidence reflect the crop
     classifier (class 1 + P(dirt) for a dirty frame, class 0 + P(clean) for a
-    clean one). Without a classifier score the box stays class 0 with the
-    detector confidence — presence only, no dirt claim.
+    clean one). Without a classifier score it uses class -1, an explicit
+    presence-only/unclassified preview state.
     """
 
     x1, y1, x2, y2 = (float(value) for value in box[:4])
     if p_dirt is None:
-        return (x1, y1, x2, y2, float(box[4]), 0)
+        return (x1, y1, x2, y2, float(box[4]), -1)
     probability = min(1.0, max(0.0, float(p_dirt)))
     if probability >= float(frame_dirt_threshold):
         return (x1, y1, x2, y2, probability, 1)
@@ -261,8 +269,13 @@ def draw_boxes(
             pass
     for box in boxes:
         x1, y1, x2, y2, conf, cls = box
-        color = (0, 0, 255) if int(cls) == 1 else (0, 200, 0)
-        label = class_name(int(cls)) or str(int(cls))
+        class_id = int(cls)
+        if class_id == 1:
+            color, label = (0, 0, 255), class_name(class_id) or "dirt_defect"
+        elif class_id == 0:
+            color, label = (0, 200, 0), class_name(class_id) or "undefected"
+        else:
+            color, label = (0, 165, 255), "cap/unclassified"
         try:
             cv2.rectangle(frame, (int(round(x1)), int(round(y1))), (int(round(x2)), int(round(y2))), color, 2)
             cv2.putText(
@@ -316,6 +329,10 @@ class SharedRuntimeState:
         self._captured = [0] * self.camera_count
         self._processed = [0] * self.camera_count
         self._inference_ms: list[float | None] = [None] * self.camera_count
+        self._stale_results = [0] * self.camera_count
+        self._detected_boxes = [0] * self.camera_count
+        self._max_detector_confidence = [0.0] * self.camera_count
+        self._publish_versions = [0] * self.camera_count
 
     def record_capture(self, index: int) -> None:
         with self._lock:
@@ -327,20 +344,53 @@ class SharedRuntimeState:
             self._boxes[index] = boxes
             self._processed[index] += 1
             self._inference_ms[index] = inference_ms
+            self._publish_versions[index] += 1
 
     def clear_boxes(self, index: int) -> None:
         """Clear stale overlays after a read/inference failure."""
 
         with self._lock:
-            self._boxes[index] = tuple()
+            if self._boxes[index]:
+                self._boxes[index] = tuple()
+                self._publish_versions[index] += 1
+
+    def record_stale(self, index: int, inference_ms: float) -> None:
+        with self._lock:
+            self._stale_results[index] += 1
+            self._inference_ms[index] = float(inference_ms)
+
+    def record_detector_result(self, index: int, boxes) -> None:
+        boxes = tuple(boxes)
+        with self._lock:
+            self._detected_boxes[index] += len(boxes)
+            if boxes:
+                self._max_detector_confidence[index] = max(
+                    self._max_detector_confidence[index],
+                    max(float(box[4]) for box in boxes),
+                )
 
     def latest_frames(self) -> tuple[list[object | None], list[tuple[Box, ...]]]:
         with self._lock:
             return list(self._frames), list(self._boxes)
 
-    def perf_counts(self) -> tuple[list[int], list[int], list[float | None]]:
+    def latest_frames_with_versions(
+        self,
+    ) -> tuple[list[object | None], list[tuple[Box, ...]], tuple[int, ...]]:
         with self._lock:
-            return list(self._captured), list(self._processed), list(self._inference_ms)
+            return list(self._frames), list(self._boxes), tuple(self._publish_versions)
+
+    def perf_counts(
+        self,
+    ) -> tuple[list[int], list[int], list[float | None], list[int], list[int], list[float]]:
+        with self._lock:
+            return (
+                list(self._captured),
+                list(self._processed),
+                list(self._inference_ms),
+                list(self._stale_results),
+                list(self._detected_boxes),
+                list(self._max_detector_confidence),
+            )
 
 
 class CameraWorker:
@@ -365,6 +415,7 @@ class CameraWorker:
         detect_threshold: float,
         duplicate_iou_threshold: float,
         max_frame_age_s: float,
+        camera_read_timeout_s: float = 2.0,
         mirror_horizontal: bool,
         tracker: CameraTracker,
         manager: CapEventManager,
@@ -394,6 +445,7 @@ class CameraWorker:
         self.detect_threshold = float(detect_threshold)
         self.duplicate_iou_threshold = float(duplicate_iou_threshold)
         self.max_frame_age_s = max(0.001, float(max_frame_age_s))
+        self.camera_read_timeout_s = max(0.1, float(camera_read_timeout_s))
         self.mirror_horizontal = bool(mirror_horizontal)
         self.tracker = tracker
         self.manager = manager
@@ -410,6 +462,8 @@ class CameraWorker:
         self.fatal_error: str | None = None
         self._latest_capture: CapturedFrame | None = None
         self._last_processed_sequence = 0
+        self._read_failure_started_at: float | None = None
+        self._last_read_warning_at: float | None = None
         self._capture_thread = threading.Thread(
             target=self._capture_entry,
             name=f"cap-line-v7-capture-{self.camera_index}",
@@ -441,7 +495,7 @@ class CameraWorker:
         with self._fatal_lock:
             if self.fatal_error is None:
                 self.fatal_error = (
-                    f"camera {self.camera_index} {role} crashed with {type(exc).__name__}"
+                    f"camera {self.camera_index} {role} crashed with {type(exc).__name__}: {exc}"
                 )
         self.stop_event.set()
 
@@ -458,12 +512,31 @@ class CameraWorker:
             self._mark_fatal("inference thread", exc)
 
     def _read(self) -> CapturedFrame | None:
+        read_error = None
         try:
             ok, frame = self.camera.read()
-        except Exception:
+        except Exception as exc:
             ok, frame = False, None
+            read_error = exc
         if not ok or frame is None:
+            now = float(self.time_fn())
+            if self._read_failure_started_at is None:
+                self._read_failure_started_at = now
+            elapsed = max(0.0, now - self._read_failure_started_at)
+            if self._last_read_warning_at is None or now - self._last_read_warning_at >= 1.0:
+                detail = "" if read_error is None else f" ({type(read_error).__name__}: {read_error})"
+                self.log_fn(
+                    f"[CAMERA {self.camera_index}][WARN] no frame for {elapsed:.1f}s{detail}"
+                )
+                self._last_read_warning_at = now
+            if elapsed >= self.camera_read_timeout_s:
+                raise RuntimeError(
+                    f"camera {self.camera_index} produced no frames for {elapsed:.1f}s; "
+                    "verify the /dev/video or /dev/v4l/by-id source and negotiated format"
+                )
             return None
+        self._read_failure_started_at = None
+        self._last_read_warning_at = None
         if self.mirror_horizontal:
             frame = mirror_frame_horizontal(frame)
         self._sequence += 1
@@ -526,7 +599,31 @@ class CameraWorker:
                 continue
             if self.stop_event.is_set():
                 break  # never turn an inference that completed during stop into a pulse
+            detector_completed = float(self.time_fn())
+            detector_age = detector_completed - captured.timestamp
             unique_boxes = deduplicate_boxes(raw_boxes, iou_threshold=self.duplicate_iou_threshold)
+            self.shared.record_detector_result(self.camera_index, unique_boxes)
+            if detector_age > self.max_frame_age_s:
+                # Keep the detector observable in the UI, but never let an old
+                # frame influence tracking or the valve.
+                detector_boxes = tuple(_to_box(box) for box in unique_boxes)
+                self.shared.publish(
+                    self.camera_index,
+                    captured.frame,
+                    detector_boxes,
+                    (detector_completed - inference_start) * 1000.0,
+                )
+                self.shared.record_stale(
+                    self.camera_index,
+                    (detector_completed - inference_start) * 1000.0,
+                )
+                self._finish_due_tracks(captured.timestamp)
+                self.log_fn(
+                    f"[CAMERA {self.camera_index}][STALE] detector saw {len(unique_boxes)} box(es) "
+                    f"on a {detector_age * 1000.0:.0f} ms-old frame; displayed but not tracked "
+                    f"(limit={self.max_frame_age_s * 1000.0:.0f} ms)"
+                )
+                continue
             # Stage 2: score each cap crop with the dirt classifier. A failed
             # classification yields None (no dirt evidence for that frame) —
             # the conservative direction for actuation.
@@ -564,22 +661,22 @@ class CameraWorker:
             if self.stop_event.is_set():
                 break
             inference_completed = float(self.time_fn())
-            frame_age = inference_completed - captured.timestamp
-            if frame_age > self.max_frame_age_s:
-                self.shared.clear_boxes(self.camera_index)
-                self._finish_due_tracks(captured.timestamp)
-                self.log_fn(
-                    f"[CAMERA {self.camera_index}][STALE] dropped inference result for a "
-                    f"{frame_age * 1000.0:.0f} ms-old frame "
-                    f"(limit={self.max_frame_age_s * 1000.0:.0f} ms)"
-                )
-                continue
             boxes = tuple(
                 _display_box(box, p_dirt, self.frame_dirt_threshold)
                 for box, p_dirt in zip(unique_boxes, dirt_probs)
             )
             inference_ms = (inference_completed - inference_start) * 1000.0
             self.shared.publish(self.camera_index, captured.frame, boxes, inference_ms)
+            total_age = inference_completed - captured.timestamp
+            if total_age > self.max_frame_age_s:
+                self.shared.record_stale(self.camera_index, inference_ms)
+                self._finish_due_tracks(captured.timestamp)
+                self.log_fn(
+                    f"[CAMERA {self.camera_index}][STALE] displayed but did not track a "
+                    f"{total_age * 1000.0:.0f} ms-old classified frame "
+                    f"(limit={self.max_frame_age_s * 1000.0:.0f} ms)"
+                )
+                continue
             try:
                 frame_size = (int(captured.frame.shape[1]), int(captured.frame.shape[0]))
             except Exception:
@@ -634,6 +731,25 @@ def run_detection(
             if hasattr(camera, "release"):
                 camera.release()
         raise
+    for index, (camera, source) in enumerate(zip(cameras, camera_sources)):
+        if isinstance(source, int):
+            log_fn(
+                f"[CAMERA {index}][WARN] using unstable numeric source /dev/video{source}; "
+                "prefer the matching /dev/v4l/by-id path after calibration"
+            )
+        getter = getattr(camera, "get", None)
+        if callable(getter):
+            try:
+                actual_width = float(getter(CAP_PROP_FRAME_WIDTH))
+                actual_height = float(getter(CAP_PROP_FRAME_HEIGHT))
+                actual_fps = float(getter(CAP_PROP_FPS))
+                log_fn(
+                    f"[CAMERA {index}] source={source!r} negotiated="
+                    f"{actual_width:.0f}x{actual_height:.0f}@{actual_fps:.1f}fps "
+                    f"requested={width}x{height}@{config.target_fps}fps"
+                )
+            except Exception as exc:
+                log_fn(f"[CAMERA {index}][WARN] unable to read negotiated format: {exc}")
 
     active_preprocess = preprocess_fn or preprocess
     active_postprocess = postprocess_fn or postprocess
@@ -651,6 +767,20 @@ def run_detection(
     classifier_imgsz = resolve_imgsz(
         classifier_input_metas[0], config.classifier_imgsz, classifier_preset_imgsz
     )
+    detector_providers = tuple(
+        str((getattr(session, "get_providers", lambda: ["unknown"])() or ["unknown"])[0])
+        for session in sessions
+    )
+    classifier_providers = tuple(
+        str((getattr(session, "get_providers", lambda: ["unknown"])() or ["unknown"])[0])
+        for session in classifier_sessions
+    )
+    if any(provider == "CPUExecutionProvider" for provider in detector_providers):
+        log_fn(
+            "[PERF][WARN] at least one detector is using CPUExecutionProvider. "
+            "On Jetson this commonly causes sparse inference, missed cap tracks, and delayed preview; "
+            "install/verify a JetPack-compatible GPU execution provider before arming air."
+        )
 
     if pin_factory is None or config.simulate_gpio:
         pin_factory = resolve_pin_factory(config)
@@ -681,12 +811,14 @@ def run_detection(
             track_iou=config.track_iou,
             track_timeout_s=track_timeout_s,
             min_defect_frames=config.min_defect_frames,
+            min_classified_frames=config.min_classified_frames,
             frame_dirt_threshold=config.frame_dirt_threshold,
             track_dirt_threshold=config.track_dirt_threshold,
             presence_clear_s=float(config.presence_clear_ms) / 1000.0,
             min_track_frames=config.min_track_frames,
             min_track_travel_ratio=config.min_track_travel_ratio,
             min_track_directionality=config.min_track_directionality,
+            min_line_side_frames=config.min_line_side_frames,
             presence_line_axis=config.presence_line_axis,
             presence_line_ratio=config.presence_line_ratio,
             presence_direction=config.presence_direction,
@@ -713,6 +845,7 @@ def run_detection(
             detect_threshold=config.detect_threshold,
             duplicate_iou_threshold=config.duplicate_iou_threshold,
             max_frame_age_s=float(config.max_frame_age_ms) / 1000.0,
+            camera_read_timeout_s=config.camera_read_timeout_s,
             mirror_horizontal=config.mirror_cameras[index],
             tracker=trackers[index],
             manager=manager,
@@ -737,11 +870,15 @@ def run_detection(
     preview_broken = False
     start_time = clock.monotonic()
     last_preview = 0.0
+    last_preview_versions: tuple[int, ...] | None = None
     last_perf = 0.0
+    last_throughput_status: str | None = None
+    last_throughput_warning = 0.0
 
     log_fn(
         f"Using v7 two-stage models: detector={model_path} imgsz={model_imgsz} "
         f"classifier={classifier_path} imgsz={classifier_imgsz} crop_margin={config.crop_margin:.2f} "
+        f"providers=detector{detector_providers}/classifier{classifier_providers} "
         f"target_fps={config.target_fps} gpio={scheduler.backend_name} "
         f"presence_gate={config.presence_line_axis}"
         f"@{config.presence_line_ratio:.3f}/{config.presence_direction} "
@@ -777,7 +914,9 @@ def run_detection(
             if preview_enabled and not preview_broken and (now - last_preview) >= preview_interval_s:
                 last_preview = now
                 try:
-                    frames, boxes = shared.latest_frames()
+                    frames, boxes, versions = shared.latest_frames_with_versions()
+                    if versions == last_preview_versions:
+                        continue
                     annotated = []
                     for frame, frame_boxes in zip(frames, boxes):
                         if frame is None:
@@ -795,13 +934,36 @@ def run_detection(
                     composite = compose_preview(annotated)
                     if composite is not None:
                         callbacks.preview_callback(composite)
+                        last_preview_versions = versions
                 except Exception as exc:  # cv2/numpy missing or a draw error: stop trying
                     preview_broken = True
                     log_fn(f"[PREVIEW][WARN] disabled: {exc}")
 
-            if callbacks.performance_callback is not None and (now - last_perf) >= PERF_EMIT_INTERVAL_S:
+            if (now - last_perf) >= PERF_EMIT_INTERVAL_S:
                 last_perf = now
-                callbacks.performance_callback(_perf_snapshot(shared, manager, scheduler, start_time, clock))
+                snapshot = _perf_snapshot(
+                    shared,
+                    manager,
+                    scheduler,
+                    start_time,
+                    clock,
+                    detector_providers=detector_providers,
+                    classifier_providers=classifier_providers,
+                )
+                if callbacks.performance_callback is not None:
+                    callbacks.performance_callback(snapshot)
+                if snapshot.throughput_status == "unsafe_low_fps" and (
+                    last_throughput_status != snapshot.throughput_status
+                    or now - last_throughput_warning >= PERF_WARNING_INTERVAL_S
+                ):
+                    log_fn(f"[PERF][UNSAFE] {snapshot.throughput_detail}; do not arm air")
+                    last_throughput_warning = now
+                elif (
+                    snapshot.throughput_status == "qualified"
+                    and last_throughput_status == "unsafe_low_fps"
+                ):
+                    log_fn(f"[PERF] {snapshot.throughput_detail}")
+                last_throughput_status = snapshot.throughput_status
 
             sleep_fn(0.005)
     finally:
@@ -842,15 +1004,53 @@ def _perf_snapshot(
     scheduler: RejectScheduler,
     start_time: float,
     clock: Clock,
+    *,
+    detector_providers: tuple[str, ...] = (),
+    classifier_providers: tuple[str, ...] = (),
 ) -> PerfSnapshot:
     elapsed = max(1e-6, clock.monotonic() - start_time)
-    captured, processed, inference_ms = shared.perf_counts()
+    (
+        captured,
+        processed,
+        inference_ms,
+        stale_results,
+        detected_boxes,
+        max_detector_confidence,
+    ) = shared.perf_counts()
+    processed_fps = tuple(count / elapsed for count in processed)
+    if elapsed < PERF_HEALTH_WARMUP_S:
+        throughput_status = "warming_up"
+        throughput_detail = f"warming up ({elapsed:.1f}/{PERF_HEALTH_WARMUP_S:.0f}s)"
+    else:
+        low_cameras = [
+            index for index, fps in enumerate(processed_fps) if fps < MIN_QUALIFIED_PROCESSED_FPS
+        ]
+        if low_cameras:
+            throughput_status = "unsafe_low_fps"
+            values = ", ".join(f"cam{index}={processed_fps[index]:.1f}" for index in low_cameras)
+            throughput_detail = (
+                f"processed FPS below replay-qualified {MIN_QUALIFIED_PROCESSED_FPS:.1f} "
+                f"({values})"
+            )
+        else:
+            throughput_status = "qualified"
+            values = ", ".join(f"cam{index}={fps:.1f}" for index, fps in enumerate(processed_fps))
+            throughput_detail = f"processed FPS meets replay floor ({values})"
     return PerfSnapshot(
         elapsed_s=elapsed,
         capture_fps_by_camera=tuple(count / elapsed for count in captured),
-        processed_fps_by_camera=tuple(count / elapsed for count in processed),
+        processed_fps_by_camera=processed_fps,
         inference_ms_by_camera=tuple(inference_ms),
         gpio_backend=scheduler.backend_name,
         caps_seen=manager.caps_seen,
         rejects=manager.rejects,
+        filtered_tracks=manager.filtered_tracks,
+        unknown_inspections=manager.unknown_inspections,
+        stale_results_by_camera=tuple(stale_results),
+        detected_boxes_by_camera=tuple(detected_boxes),
+        max_detector_confidence_by_camera=tuple(max_detector_confidence),
+        detector_providers=detector_providers,
+        classifier_providers=classifier_providers,
+        throughput_status=throughput_status,
+        throughput_detail=throughput_detail,
     )

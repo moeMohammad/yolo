@@ -3,8 +3,11 @@ from __future__ import annotations
 import os
 
 
-GPIO09 = 7  # Jetson Nano J41 physical BOARD pin 7.
-DEFAULT_TRIGGER_PIN = GPIO09
+BOARD_PIN_7 = 7  # Physical pin 7 on the Jetson 40-pin expansion header.
+# Backward-compatible project alias. The SoC signal name differs across Jetson
+# carrier/module generations, so new operator text refers to BOARD pin 7.
+GPIO09 = BOARD_PIN_7
+DEFAULT_TRIGGER_PIN = BOARD_PIN_7
 
 _GPIO_PERMISSIONS_HINT = (
     "Configure Jetson GPIO access once, then log out and back in:\n"
@@ -63,7 +66,7 @@ class GPIOOutputPin:
         except Exception as exc:
             raise RuntimeError(
                 f"Could not import Jetson.GPIO for GPIO pin {pin}. "
-                "Install Jetson.GPIO on the Jetson Nano and make sure the "
+                "Install Jetson.GPIO on the Jetson and make sure the "
                 "runtime user has GPIO permissions."
             ) from exc
 
@@ -79,7 +82,7 @@ class GPIOOutputPin:
         except Exception as exc:
             raise RuntimeError(
                 f"Could not initialize Jetson.GPIO {mode_name} pin {channel}. "
-                "Check that the selected Jetson Nano header pin is configured for "
+                "Check that the selected Jetson header pin is configured for "
                 "GPIO output and that pinmux/permissions are set correctly.\n\n"
                 f"{_GPIO_PERMISSIONS_HINT}"
             ) from exc
@@ -114,8 +117,9 @@ class GPIOOutputPin:
             return GPIO.BCM, _positive_int(bcm, "Jetson BCM pin"), "BCM"
 
         raise ValueError(
-            f"Unsupported Jetson GPIO pin {pin!r}. Use GPIO09, a BOARD pin "
-            "number such as 7, BOARD7, or a BCM pin such as BCM4."
+            f"Unsupported Jetson GPIO pin {pin!r}. Use a BOARD pin number "
+            "such as 7 or BOARD7, or a BCM pin such as BCM4. GPIO09 remains "
+            "accepted as a legacy alias for BOARD7."
         )
 
     def on(self) -> None:

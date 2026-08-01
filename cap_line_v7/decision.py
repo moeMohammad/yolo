@@ -1,8 +1,8 @@
 """Cross-camera de-duplication and the once-per-cap fire guarantee (v7).
 
 Both cameras see the same physical cap from different angles, so both of their
-tracks finish at nearly the same time — but on a Pi 5 the *reporting* of those
-finishes can be far apart (slow, jittery CPU inference). v4 merged on the
+tracks finish at nearly the same time — but on a resource-constrained edge
+device the *reporting* can be far apart (slow, jittery inference). v4 merged on the
 reporting clock and double-fired when camera B's finish landed outside the
 50 ms window. v7 keys everything off the physical exit timestamp
 ``track.last_seen`` instead, with layered safety (see ``cap_line_v7_PROMPT.md``):
@@ -13,8 +13,8 @@ reporting clock and double-fired when camera B's finish landed outside the
 3. Presence-cycle idempotency: fragments from one camera presence can consume
    at most one fire decision, even beyond the time merge window.
 4. Post-fire refractory: a new fire is suppressed (never delayed) if its
-   ``last_seen`` reference is within ``min_fire_interval`` of the previous
-   fire's reference — the hard once-per-cap guarantee.
+   physical gate-crossing reference is within ``min_fire_interval`` of the
+   previous fire's reference — the hard once-per-cap guarantee.
 5. The open event is finalized only once ``now`` is past
    ``event.last_seen + merge_window + track_timeout`` so every finish that
    could still merge has had time to be reported.
@@ -22,7 +22,8 @@ reporting clock and double-fired when camera B's finish landed outside the
 Locking: ``handle_finished_track`` is called from each camera thread,
 ``flush_expired``/``finalize_all`` from the coordinator thread, and the fire
 completion callback from the scheduler thread. All event mutation happens under
-``_lock``; user callbacks are always invoked *outside* the lock.
+``_lock``; ordered delivery uses ``_delivery_lock`` and user callbacks are
+always invoked *outside* the state lock.
 """
 
 from __future__ import annotations
@@ -61,10 +62,23 @@ class CapEvent:
     requested_fire_time: float | None = None
     actual_fire_time: float | None = None
     fire_decided: bool = False
+    fire_status: str = "not_requested"
     cycle_keys: set[tuple[int, int]] = field(default_factory=set)
+    inspected_cameras: set[int] = field(default_factory=set)
+    unknown_cameras: set[int] = field(default_factory=set)
+    actuation_reference_at: float | None = None
+    # Frozen when the event is finalized. Late fragments may extend last_seen
+    # for tombstone matching, but must never change the durable history key.
+    recorded_reference_at: float | None = None
 
     def absorb(self, track) -> None:
         self.absorb_presence(track)
+        camera_index = int(track.camera_index)
+        if bool(getattr(track, "is_inspected", False)):
+            self.inspected_cameras.add(camera_index)
+            self.unknown_cameras.discard(camera_index)
+        elif camera_index not in self.inspected_cameras:
+            self.unknown_cameras.add(camera_index)
         self.best_undefected_conf = max(self.best_undefected_conf, float(track.best_undefected_conf))
         if track.is_defect:
             self.is_defect = True  # defect-wins across cameras too
@@ -79,6 +93,11 @@ class CapEvent:
         if cycle_id is not None:
             self.cycle_keys.add((int(track.camera_index), int(cycle_id)))
         self.last_seen = max(self.last_seen, float(track.last_seen))
+        crossing = getattr(track, "presence_crossed_at", None)
+        if crossing is not None and (
+            self.actuation_reference_at is None or float(crossing) < self.actuation_reference_at
+        ):
+            self.actuation_reference_at = float(crossing)
 
 
 class CapEventManager:
@@ -98,13 +117,20 @@ class CapEventManager:
         self.min_track_frames = int(config.min_track_frames)
         self.min_track_travel_ratio = float(config.min_track_travel_ratio)
         self.min_track_directionality = float(config.min_track_directionality)
+        self.min_line_side_frames = int(config.min_line_side_frames)
         self.max_track_gap_s = float(config.max_track_gap_ms) / 1000.0
+        self.required_inspected_cameras = int(config.required_inspected_cameras)
+        self.reject_uninspected = bool(config.reject_uninspected)
         self.fire_delay_s = float(config.fire_delay_s)
         self.scheduler = scheduler
         self.time_fn = time_fn
         self.clock = clock
         self.history_callback = history_callback
         self.log_fn = log_fn
+        # Preserve record transition order across manager callers and the
+        # scheduler completion thread. In particular, a fast immediate pulse
+        # must not publish "fired" before finalization publishes "pending".
+        self._delivery_lock = threading.RLock()
         self._lock = threading.Lock()
         self._open_event: CapEvent | None = None
         # Recently finalized events are terminal decision tombstones.  A slow
@@ -123,6 +149,7 @@ class CapEventManager:
         self.rejects = 0
         self.suppressed_fires = 0
         self.filtered_tracks = 0
+        self.unknown_inspections = 0
 
     # -- public API ---------------------------------------------------------
 
@@ -139,6 +166,7 @@ class CapEventManager:
             min_travel_ratio=self.min_track_travel_ratio,
             min_directionality=self.min_track_directionality,
             max_observation_gap=self.max_track_gap_s,
+            min_line_side_frames=self.min_line_side_frames,
             require_line_crossing=True,
         ):
             with self._lock:
@@ -153,58 +181,59 @@ class CapEventManager:
             )
             return
 
-        emitted: list[CapEventRecord] = []
-        log_messages: list[str] = []
-        with self._lock:
-            now = float(self.time_fn())
-            event = self._open_event
-            open_distance = None if event is None else self._track_merge_distance_locked(event, track)
-            finalized_match = self._matching_finalized_event_locked(track)
-            finalized_event = None if finalized_match is None else finalized_match[0]
-            finalized_distance = None if finalized_match is None else finalized_match[1]
-            # Select the closest physical exit across both current and
-            # terminal events. On an exact tie, prefer the terminal decision:
-            # suppressing an ambiguous fragment is safer than re-arming air.
-            if finalized_event is not None and (
-                open_distance is None or finalized_distance <= open_distance
-            ):
-                cycle_id = getattr(track, "presence_cycle_id", None)
-                if cycle_id is not None:
-                    self._remember_consumed_cycle_locked((int(track.camera_index), int(cycle_id)))
-                finalized_event.absorb_presence(track)
-                if track.is_defect:
-                    self.suppressed_fires += 1
-                log_messages.append(
-                    f"[DEDUP] ignored late camera={track.camera_index} fragment for "
-                    f"finalized event={finalized_event.event_id}"
-                )
-            else:
-                if event is not None and open_distance is not None:
-                    # Exit times overlap -> same physical cap (second camera,
-                    # or a slightly-late frame from the same camera).
-                    event.absorb(track)
-                    if event.fire_decided:
-                        self._consume_event_cycles_locked(event)
-                    elif track.is_defect:
-                        # First camera saw it clean, this one saw it dirty.
-                        message = self._maybe_schedule_fire_locked(event, float(track.last_seen))
-                        if message is not None:
-                            log_messages.append(message)
-                else:
-                    # A genuinely new cap: close out the previous one first.
-                    if event is not None:
-                        emitted.append(self._finalize_locked(event))
-                    event = CapEvent(event_id=next(self._counter), opened_at=now, last_seen=float(track.last_seen))
-                    event.absorb(track)
-                    self._open_event = event
+        with self._delivery_lock:
+            emitted: list[CapEventRecord] = []
+            log_messages: list[str] = []
+            with self._lock:
+                now = float(self.time_fn())
+                event = self._open_event
+                open_distance = None if event is None else self._track_merge_distance_locked(event, track)
+                finalized_match = self._matching_finalized_event_locked(track)
+                finalized_event = None if finalized_match is None else finalized_match[0]
+                finalized_distance = None if finalized_match is None else finalized_match[1]
+                # Select the closest physical exit across both current and
+                # terminal events. On an exact tie, prefer the terminal decision:
+                # suppressing an ambiguous fragment is safer than re-arming air.
+                if finalized_event is not None and (
+                    open_distance is None or finalized_distance <= open_distance
+                ):
+                    cycle_id = getattr(track, "presence_cycle_id", None)
+                    if cycle_id is not None:
+                        self._remember_consumed_cycle_locked((int(track.camera_index), int(cycle_id)))
+                    finalized_event.absorb_presence(track)
                     if track.is_defect:
-                        message = self._maybe_schedule_fire_locked(event, float(track.last_seen))
-                        if message is not None:
-                            log_messages.append(message)
-        for message in log_messages:
-            self.log_fn(message)
-        for record in emitted:
-            self._emit(record)
+                        self.suppressed_fires += 1
+                    log_messages.append(
+                        f"[DEDUP] ignored late camera={track.camera_index} fragment for "
+                        f"finalized event={finalized_event.event_id}"
+                    )
+                else:
+                    if event is not None and open_distance is not None:
+                        # Exit times overlap -> same physical cap (second camera,
+                        # or a slightly-late frame from the same camera).
+                        event.absorb(track)
+                        if event.fire_decided:
+                            self._consume_event_cycles_locked(event)
+                        elif track.is_defect:
+                            # First camera saw it clean, this one saw it dirty.
+                            message = self._maybe_schedule_fire_locked(event, self._track_fire_reference(track))
+                            if message is not None:
+                                log_messages.append(message)
+                    else:
+                        # A genuinely new cap: close out the previous one first.
+                        if event is not None:
+                            emitted.append(self._finalize_locked(event))
+                        event = CapEvent(event_id=next(self._counter), opened_at=now, last_seen=float(track.last_seen))
+                        event.absorb(track)
+                        self._open_event = event
+                        if track.is_defect:
+                            message = self._maybe_schedule_fire_locked(event, self._track_fire_reference(track))
+                            if message is not None:
+                                log_messages.append(message)
+            for message in log_messages:
+                self.log_fn(message)
+            for record in emitted:
+                self._emit(record)
 
     def flush_expired(self, now: float) -> None:
         """Finalize (log) the open event once no further merge can arrive.
@@ -214,29 +243,31 @@ class CapEventManager:
         past that horizon the event is complete.
         """
 
-        emitted: list[CapEventRecord] = []
-        with self._lock:
-            event = self._open_event
-            if (
-                event is not None
-                and float(now)
-                > event.last_seen + self.merge_window_s + self.track_timeout_s + TIME_BOUNDARY_EPSILON_S
-            ):
-                emitted.append(self._finalize_locked(event))
-                self._open_event = None
-        for record in emitted:
-            self._emit(record)
+        with self._delivery_lock:
+            emitted: list[CapEventRecord] = []
+            with self._lock:
+                event = self._open_event
+                if (
+                    event is not None
+                    and float(now)
+                    > event.last_seen + self.merge_window_s + self.track_timeout_s + TIME_BOUNDARY_EPSILON_S
+                ):
+                    emitted.append(self._finalize_locked(event))
+                    self._open_event = None
+            for record in emitted:
+                self._emit(record)
 
     def finalize_all(self) -> None:
         """Finalize any lingering open event (called at shutdown)."""
 
-        emitted: list[CapEventRecord] = []
-        with self._lock:
-            if self._open_event is not None:
-                emitted.append(self._finalize_locked(self._open_event))
-                self._open_event = None
-        for record in emitted:
-            self._emit(record)
+        with self._delivery_lock:
+            emitted: list[CapEventRecord] = []
+            with self._lock:
+                if self._open_event is not None:
+                    emitted.append(self._finalize_locked(self._open_event))
+                    self._open_event = None
+            for record in emitted:
+                self._emit(record)
 
     # -- internals (call with _lock held) -----------------------------------
 
@@ -244,13 +275,19 @@ class CapEventManager:
         return self._track_merge_distance_locked(event, track) is not None
 
     def _track_merge_distance_locked(self, event: CapEvent, track) -> float | None:
+        camera_index = int(track.camera_index)
+        cycle_id = getattr(track, "presence_cycle_id", None)
+        if cycle_id is not None and (camera_index, int(cycle_id)) in event.cycle_keys:
+            # An actionable dirty track is reported at the gate and again when
+            # it finally leaves view. That can span longer than the cross-camera
+            # timestamp window, but the camera-local presence cycle is exact
+            # identity and must remain one cap/event.
+            return 0.0
         distance = abs(float(track.last_seen) - event.last_seen)
         if distance > self.merge_window_s + TIME_BOUNDARY_EPSILON_S:
             return None
-        camera_index = int(track.camera_index)
         if camera_index not in event.seen_cameras:
             return distance  # matching exit time from the other camera
-        cycle_id = getattr(track, "presence_cycle_id", None)
         if cycle_id is None:
             return distance  # compatibility for externally supplied/legacy tracks
         # Same-camera tracks in different spatial crossing cycles are distinct
@@ -291,6 +328,7 @@ class CapEventManager:
         if reused_cycles:
             event.fire_decided = True
             event.fire_suppressed = True
+            event.fire_status = "suppressed"
             self.suppressed_fires += 1
             self._consume_event_cycles_locked(event)
             return (
@@ -304,6 +342,7 @@ class CapEventManager:
         ):
             event.fire_decided = True
             event.fire_suppressed = True
+            event.fire_status = "suppressed"
             self.suppressed_fires += 1
             self._consume_event_cycles_locked(event)
             return (
@@ -314,6 +353,7 @@ class CapEventManager:
         requested_fire_time = reference_last_seen + self.fire_delay_s
         event.fire_decided = True
         event.fired = True
+        event.fire_status = "pending"
         event.requested_fire_time = requested_fire_time
         self._last_fire_ref = reference_last_seen
         self._consume_event_cycles_locked(event)
@@ -328,6 +368,7 @@ class CapEventManager:
             # decision is terminally suppressed, never allowed to resurrect.
             event.fired = False
             event.fire_suppressed = True
+            event.fire_status = "cancelled"
             event.requested_fire_time = None
             self.suppressed_fires += 1
             return f"[REJECT][CANCELLED] event={event.event_id}: {exc}"
@@ -347,33 +388,57 @@ class CapEventManager:
             self._consumed_cycle_keys.discard(expired)
 
     def _finalize_locked(self, event: CapEvent) -> CapEventRecord:
+        if self._event_is_unknown_locked(event) and self.reject_uninspected and not event.fire_decided:
+            reference = event.actuation_reference_at if event.actuation_reference_at is not None else event.last_seen
+            self._maybe_schedule_fire_locked(event, float(reference))
         event.finalized = True
+        event.recorded_reference_at = event.last_seen
         # A finalized PASS is a decision too. Without consuming its crossing
         # key, a late dirty fragment from that same physical presence could
         # open a new event and fire after the clean cap had already left.
         self._consume_event_cycles_locked(event)
         self._recent_finalized_events.append(event)
         self.caps_seen += 1
-        if event.is_defect:
+        record = self._build_record_locked(event)
+        if record.inspection_status == "unknown":
+            self.unknown_inspections += 1
+        if record.result == "reject":
             self.rejects += 1
-        return self._build_record_locked(event)
+        return record
 
     def _build_record_locked(self, event: CapEvent) -> CapEventRecord:
+        inspection_unknown = self._event_is_unknown_locked(event)
         if event.is_defect:
             winning_class, confidence = DEFECT_CLASS_ID, event.best_defect_conf
+            result = "reject"
+            winning_name = class_name(winning_class)
+            inspection_status = "valid"
+        elif inspection_unknown:
+            confidence = None
+            result = "reject" if self.reject_uninspected else "unknown"
+            winning_name = "uninspected"
+            inspection_status = "unknown"
         else:
             winning_class, confidence = 0, event.best_undefected_conf
+            result = "pass"
+            winning_name = class_name(winning_class)
+            inspection_status = "valid"
         return CapEventRecord(
             event_id=event.event_id,
-            recorded_at=self._format_time(event.last_seen) or "",
-            result="reject" if event.is_defect else "pass",
-            class_name=class_name(winning_class),
-            confidence=float(confidence),
+            recorded_at=self._format_time(
+                event.last_seen if event.recorded_reference_at is None else event.recorded_reference_at
+            )
+            or "",
+            result=result,
+            class_name=winning_name,
+            confidence=None if confidence is None else float(confidence),
             cameras=sorted(event.seen_cameras),
             flagged_cameras=sorted(event.flagged_cameras),
             requested_fire_time=self._format_time(event.requested_fire_time),
             actual_fire_time=self._format_time(event.actual_fire_time),
             fire_suppressed=event.fire_suppressed,
+            inspection_status=inspection_status,
+            fire_status=event.fire_status,
         )
 
     def _on_fire_complete(self, event: CapEvent, execution) -> None:
@@ -384,13 +449,26 @@ class CapEventManager:
         fire time filled in; otherwise ``_finalize_locked`` will pick it up.
         """
 
-        emitted: list[CapEventRecord] = []
-        with self._lock:
-            event.actual_fire_time = float(execution.trigger_on_time)
-            if event.finalized:
-                emitted.append(self._build_record_locked(event))
-        for record in emitted:
-            self._emit(record)
+        with self._delivery_lock:
+            emitted: list[CapEventRecord] = []
+            with self._lock:
+                status = str(getattr(execution, "status", "fired"))
+                event.fire_status = status
+                trigger_on_time = getattr(execution, "trigger_on_time", None)
+                if trigger_on_time is not None:
+                    # Some terminal failures occur only after GPIO physically
+                    # went ON. Preserve that timestamp even when the pulse was
+                    # shortened, late, or could not be switched OFF.
+                    event.actual_fire_time = float(trigger_on_time)
+                    event.fired = True
+                else:
+                    event.fired = False
+                    if status == "coalesced":
+                        event.fire_suppressed = True
+                if event.finalized:
+                    emitted.append(self._build_record_locked(event))
+            for record in emitted:
+                self._emit(record)
 
     # -- helpers ------------------------------------------------------------
 
@@ -401,13 +479,25 @@ class CapEventManager:
             return self.clock.format(value)
         return f"{float(value):.6f}"
 
+    def _event_is_unknown_locked(self, event: CapEvent) -> bool:
+        if event.is_defect:
+            return False
+        return len(event.inspected_cameras) < self.required_inspected_cameras
+
+    @staticmethod
+    def _track_fire_reference(track) -> float:
+        crossing = getattr(track, "presence_crossed_at", None)
+        return float(track.last_seen if crossing is None else crossing)
+
     def _emit(self, record: CapEventRecord) -> None:
         result = record.result.upper()
         cameras = ",".join(str(index) for index in record.flagged_cameras) or "-"
         suffix = " (fire deduped)" if record.fire_suppressed else ""
+        confidence = "-" if record.confidence is None else f"{record.confidence:.3f}"
         self.log_fn(
             f"[CAP] event={record.event_id} {result} "
-            f"class={record.class_name} conf={record.confidence:.3f} flagged_by={cameras}{suffix}"
+            f"class={record.class_name} conf={confidence} inspection={record.inspection_status} "
+            f"air={record.fire_status} flagged_by={cameras}{suffix}"
         )
         if self.history_callback is not None:
             self.history_callback(record)

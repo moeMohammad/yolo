@@ -6,9 +6,9 @@ fires happen on time regardless of what the capture/inference threads are doing.
 ``time_fn`` is injectable for deterministic deadline tests; the pulse wait is
 cancel-aware so shutdown can de-energize the valve promptly.
 
-A failed pulse (GPIO error, torn-down pin, callback bug) is logged and skipped —
-it must never kill the scheduler thread, because a dead scheduler silently stops
-every future fire while the rest of the runtime keeps running.
+A failed GPIO transition is reported to event history and latched fatal so the
+runtime stops instead of silently continuing with rejection disabled. A
+completion-callback failure is isolated and logged so it cannot disable GPIO.
 
 The queue is fail-safe: newly earlier jobs can preempt a future wait, targets
 already covered by an active pulse are coalesced, runnable backlog expires, and
@@ -48,8 +48,10 @@ class RejectExecution:
     event_id: int
     queued_at: float
     requested_fire_time: float
-    trigger_on_time: float
-    trigger_off_time: float
+    status: str = "fired"
+    trigger_on_time: float | None = None
+    trigger_off_time: float | None = None
+    detail: str | None = None
 
 
 @dataclass(frozen=True)
@@ -137,6 +139,37 @@ class RejectScheduler:
             if self.fatal_error is None:
                 self.fatal_error = str(message)
 
+    def _notify_outcome(
+        self,
+        callback: Callable[[RejectExecution], None] | None,
+        *,
+        event_id: int,
+        queued_at: float,
+        requested_fire_time: float,
+        status: str,
+        trigger_on_time: float | None = None,
+        trigger_off_time: float | None = None,
+        detail: str | None = None,
+    ) -> None:
+        """Report every terminal job outcome without risking the scheduler."""
+
+        if callback is None:
+            return
+        try:
+            callback(
+                RejectExecution(
+                    event_id=event_id,
+                    queued_at=queued_at,
+                    requested_fire_time=requested_fire_time,
+                    status=status,
+                    trigger_on_time=trigger_on_time,
+                    trigger_off_time=trigger_off_time,
+                    detail=detail,
+                )
+            )
+        except Exception as exc:
+            self._log(f"[REJECT][ERROR] completion callback for event={event_id} failed: {exc}")
+
     def _run(self) -> None:
         try:
             while True:
@@ -166,6 +199,14 @@ class RejectScheduler:
                         earliest_start = max(earliest_start, self._last_fire_end + self.trigger_min_gap)
                 if coalesced_message is not None:
                     self._log(coalesced_message)
+                    self._notify_outcome(
+                        callback,
+                        event_id=event_id,
+                        queued_at=queued_at,
+                        requested_fire_time=requested_fire_time,
+                        status="coalesced",
+                        detail=coalesced_message,
+                    )
                     continue
 
                 # Clock and logger callbacks are deliberately outside the
@@ -197,6 +238,14 @@ class RejectScheduler:
                         f"{absolute_lateness * 1000.0:.0f} ms late "
                         f"(limit={self.max_lateness * 1000.0:.0f} ms)"
                     )
+                    self._notify_outcome(
+                        callback,
+                        event_id=event_id,
+                        queued_at=queued_at,
+                        requested_fire_time=requested_fire_time,
+                        status="stale",
+                        detail=f"target was {absolute_lateness * 1000.0:.0f} ms late",
+                    )
                     continue
                 runnable_since = max(float(queued_at), float(requested_fire_time))
                 queue_age = max(0.0, now - runnable_since)
@@ -206,31 +255,62 @@ class RejectScheduler:
                         f"[REJECT][STALE] dropped event={event_id}: runnable in queue for "
                         f"{queue_age * 1000.0:.0f} ms (limit={self.max_queue_age * 1000.0:.0f} ms)"
                     )
+                    self._notify_outcome(
+                        callback,
+                        event_id=event_id,
+                        queued_at=queued_at,
+                        requested_fire_time=requested_fire_time,
+                        status="stale",
+                        detail=f"queue age was {queue_age * 1000.0:.0f} ms",
+                    )
                     continue
 
                 # Read the clock outside the state condition. GPIO activation
                 # is serialized below, while close's lock-free event can still
                 # request cancellation if a driver call stalls.
                 pre_on = float(self.time_fn())
+                pre_on_cancelled = False
+                pre_on_stale_detail = None
                 with self._condition:
                     if self._closed or self._close_requested.is_set() or self._cancel_requested():
-                        return
+                        pre_on_cancelled = True
                     # Recheck deadlines at the last software-controlled point
                     # before energizing the valve.
-                    if pre_on - float(requested_fire_time) > self.max_lateness:
+                    elif pre_on - float(requested_fire_time) > self.max_lateness:
                         self.stale_drops += 1
-                        continue
-                    if pre_on - max(float(queued_at), float(requested_fire_time)) > self.max_queue_age:
+                        pre_on_stale_detail = "deadline expired immediately before GPIO ON"
+                    elif pre_on - max(float(queued_at), float(requested_fire_time)) > self.max_queue_age:
                         self.stale_drops += 1
-                        continue
+                        pre_on_stale_detail = "queue age expired immediately before GPIO ON"
                     # Holding the state lock through the fast GPIO transition
                     # gives close() a clear linearization point. close() uses a
                     # bounded acquisition, so a broken driver still cannot
                     # hang shutdown indefinitely.
-                    try:
-                        self.pin.on()
-                    except Exception as exc:
-                        on_exc = exc
+                    else:
+                        try:
+                            self.pin.on()
+                        except Exception as exc:
+                            on_exc = exc
+                if pre_on_cancelled:
+                    self._notify_outcome(
+                        callback,
+                        event_id=event_id,
+                        queued_at=queued_at,
+                        requested_fire_time=requested_fire_time,
+                        status="cancelled",
+                        detail="cancelled immediately before GPIO ON",
+                    )
+                    return
+                if pre_on_stale_detail is not None:
+                    self._notify_outcome(
+                        callback,
+                        event_id=event_id,
+                        queued_at=queued_at,
+                        requested_fire_time=requested_fire_time,
+                        status="stale",
+                        detail=pre_on_stale_detail,
+                    )
+                    continue
                 if on_exc is not None:
                     off_exc = None
                     try:
@@ -239,14 +319,29 @@ class RejectScheduler:
                         off_exc = failure
                         with self._condition:
                             self._closed = True
-                            self.cancelled_on_close += len(self._queue)
-                            self._queue.clear()
+                            self._condition.notify_all()
                     self._log(f"[REJECT][ERROR] pulse for event={event_id} failed to turn on: {on_exc}")
+                    self._notify_outcome(
+                        callback,
+                        event_id=event_id,
+                        queued_at=queued_at,
+                        requested_fire_time=requested_fire_time,
+                        status="gpio_failed",
+                        detail=str(on_exc),
+                    )
                     if off_exc is not None:
+                        # First-wins fatal latching: preserve the more severe
+                        # state-unknown outcome instead of hiding it behind the
+                        # original ON exception.
                         self._mark_fatal("reject valve state is unknown after ON/OFF failure")
                         self._log(f"[REJECT][ERROR] fail-safe OFF also failed: {off_exc}")
-                        return
-                    continue
+                    else:
+                        self._mark_fatal("reject valve failed to turn on")
+                    # A GPIO transition failure invalidates the actuator, not
+                    # just this job. Stop the scheduler so its finally block
+                    # cancels every queued pulse before the coordinator has to
+                    # notice the fatal latch.
+                    return
                 trigger_on = float(self.time_fn())
                 activation_cancelled = (
                     self._closed or self._close_requested.is_set() or self._cancel_requested()
@@ -265,11 +360,31 @@ class RejectScheduler:
                     # occurred instead of claiming a clean stop.
                     try:
                         self.pin.off()
-                    except Exception:
+                    except Exception as exc:
+                        self._notify_outcome(
+                            callback,
+                            event_id=event_id,
+                            queued_at=queued_at,
+                            requested_fire_time=requested_fire_time,
+                            status="gpio_failed",
+                            trigger_on_time=trigger_on,
+                            detail=f"late/cancelled GPIO ON could not be forced OFF: {exc}",
+                        )
                         self._mark_fatal(
                             "reject valve activation completed late and could not be forced off"
                         )
                         return
+                    forced_off = float(self.time_fn())
+                    self._notify_outcome(
+                        callback,
+                        event_id=event_id,
+                        queued_at=queued_at,
+                        requested_fire_time=requested_fire_time,
+                        status="cancelled_after_on" if activation_cancelled else "stale_after_on",
+                        trigger_on_time=trigger_on,
+                        trigger_off_time=forced_off,
+                        detail="GPIO ON completed after cancellation or its safety deadline",
+                    )
                     self.stale_drops += 1
                     if activation_cancelled:
                         self._mark_fatal(
@@ -293,43 +408,64 @@ class RejectScheduler:
                 except Exception as exc:
                     with self._condition:
                         self._closed = True
-                        self.cancelled_on_close += len(self._queue)
-                        self._queue.clear()
+                        self._condition.notify_all()
                     self._mark_fatal("reject valve failed to turn off; hardware state is unknown")
                     self._log(f"[REJECT][ERROR] pulse for event={event_id} failed to turn off: {exc}")
-                    return
-                if self._closed or self._close_requested.is_set() or self._cancel_requested():
+                    self._notify_outcome(
+                        callback,
+                        event_id=event_id,
+                        queued_at=queued_at,
+                        requested_fire_time=requested_fire_time,
+                        status="gpio_failed",
+                        trigger_on_time=trigger_on,
+                        detail=f"GPIO OFF failed: {exc}",
+                    )
                     return
                 trigger_off = float(self.time_fn())
+                if self._closed or self._close_requested.is_set() or self._cancel_requested():
+                    self._notify_outcome(
+                        callback,
+                        event_id=event_id,
+                        queued_at=queued_at,
+                        requested_fire_time=requested_fire_time,
+                        status="cancelled_after_on",
+                        trigger_on_time=trigger_on,
+                        trigger_off_time=trigger_off,
+                        detail="pulse was shortened by cancellation",
+                    )
+                    return
                 self._last_fire_end = trigger_off
 
-                with self._condition:
-                    if self._closed:
-                        return
-                if callback is not None:
-                    try:
-                        callback(
-                            RejectExecution(
-                                event_id=event_id,
-                                queued_at=queued_at,
-                                requested_fire_time=requested_fire_time,
-                                trigger_on_time=trigger_on,
-                                trigger_off_time=trigger_off,
-                            )
-                        )
-                    except Exception as exc:
-                        self._log(f"[REJECT][ERROR] completion callback for event={event_id} failed: {exc}")
+                self._notify_outcome(
+                    callback,
+                    event_id=event_id,
+                    queued_at=queued_at,
+                    requested_fire_time=requested_fire_time,
+                    status="fired",
+                    trigger_on_time=trigger_on,
+                    trigger_off_time=trigger_off,
+                )
         except BaseException as exc:
             # A dead scheduler would otherwise leave detection apparently
             # healthy while every future reject silently remains unserved.
             self._mark_fatal(f"reject scheduler crashed with {type(exc).__name__}")
         finally:
+            cancelled_jobs = []
             with self._condition:
-                if not self._closed:
-                    self._closed = True
-                    self.cancelled_on_close += len(self._queue)
-                    self._queue.clear()
-                    self._condition.notify_all()
+                self._closed = True
+                cancelled_jobs = list(self._queue)
+                self.cancelled_on_close += len(cancelled_jobs)
+                self._queue.clear()
+                self._condition.notify_all()
+            for requested, _order, cancelled_event_id, queued, cancelled_callback in cancelled_jobs:
+                self._notify_outcome(
+                    cancelled_callback,
+                    event_id=cancelled_event_id,
+                    queued_at=queued,
+                    requested_fire_time=requested,
+                    status="cancelled",
+                    detail="scheduler closed before GPIO ON",
+                )
             off_exc = None
             close_exc = None
             try:
@@ -351,16 +487,27 @@ class RejectScheduler:
         # This lock-free signal also interrupts an active pulse wait. It is set
         # before acquiring the condition in case a GPIO call is slow.
         self._close_requested.set()
+        cancelled_jobs = []
         acquired = self._condition.acquire(timeout=self._close_lock_timeout_s)
         if acquired:
             try:
                 if not self._closed:
                     self._closed = True
-                    self.cancelled_on_close += len(self._queue)
+                    cancelled_jobs = list(self._queue)
+                    self.cancelled_on_close += len(cancelled_jobs)
                     self._queue.clear()
                     self._condition.notify_all()
             finally:
                 self._condition.release()
+        for requested, _order, event_id, queued_at, callback in cancelled_jobs:
+            self._notify_outcome(
+                callback,
+                event_id=event_id,
+                queued_at=queued_at,
+                requested_fire_time=requested,
+                status="cancelled",
+                detail="scheduler closed before GPIO ON",
+            )
         if threading.current_thread() is not self._thread:
             self._thread.join(timeout=self._close_join_timeout_s)
             if self._thread.is_alive():

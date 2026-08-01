@@ -455,5 +455,8 @@ def test_run_detection_fires_once_for_defect_cap():
     assert not worker.is_alive()
     assert len(fires) == 1  # exactly one air pulse for the one physical cap
     rejects = [record for record in records if record.result == "reject"]
-    assert len(rejects) == 1
+    # The same event may be emitted again when its asynchronous actual-fire
+    # timestamp arrives; the UI repository upserts that update by event ID.
+    assert rejects
+    assert len({record.event_id for record in rejects}) == 1
     assert 0 in rejects[0].flagged_cameras  # camera 0 is the one that caught the dirt

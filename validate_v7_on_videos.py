@@ -6,9 +6,9 @@ recorded cam_0/cam_2 video pairs with a virtual clock derived from the true
 30 fps timing, and reports per-cap decisions against the folder ground truth
 (clean/ = all caps clean; dirt/ = caps expected dirty, label noise possible).
 
-Also re-runs the tracker layer under the DEFAULT (mirrored/positive) config to
-quantify why the live run saw no caps, and under a simulated slow-Jetson frame
-pace to check the qualification gates' headroom.
+`--stride` skips input frames to stress sparse-rate tracking, but timestamps
+remain ideal video time. This is a regression tool, not a real-time scheduler,
+camera, UI, provider, or GPIO validation.
 
 Usage: python validate_v7_on_videos.py [--videos-root recorded_videos] [--stride 1]
 """
@@ -122,12 +122,14 @@ def simulate_pair(models, cam0_path: Path, cam2_path: Path, config: RuntimeConfi
             track_iou=config.track_iou,
             track_timeout_s=config.track_timeout_ms / 1000.0,
             min_defect_frames=config.min_defect_frames,
+            min_classified_frames=config.min_classified_frames,
             frame_dirt_threshold=config.frame_dirt_threshold,
             track_dirt_threshold=config.track_dirt_threshold,
             presence_clear_s=config.presence_clear_ms / 1000.0,
             min_track_frames=config.min_track_frames,
             min_track_travel_ratio=config.min_track_travel_ratio,
             min_track_directionality=config.min_track_directionality,
+            min_line_side_frames=config.min_line_side_frames,
             presence_line_axis=config.presence_line_axis,
             presence_line_ratio=config.presence_line_ratio,
             presence_direction=config.presence_direction,
@@ -186,14 +188,17 @@ def simulate_pair(models, cam0_path: Path, cam2_path: Path, config: RuntimeConfi
         "fires": len(scheduler.enqueued),
         "suppressed_fires": manager.suppressed_fires,
         "filtered_tracks": manager.filtered_tracks,
+        "unknown_inspections": manager.unknown_inspections,
         "filter_sample": filter_lines[:3],
         "events": [
             {
                 "event_id": record.event_id,
                 "result": record.result,
                 "class": record.class_name,
-                "confidence": round(float(record.confidence), 3),
+                "confidence": None if record.confidence is None else round(float(record.confidence), 3),
                 "flagged_cameras": record.flagged_cameras,
+                "inspection_status": record.inspection_status,
+                "fire_status": record.fire_status,
             }
             for record in records
         ],
@@ -204,13 +209,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--videos-root", type=Path, default=Path("recorded_videos"))
     parser.add_argument("--stride", type=int, default=1, help="process every Nth frame (Jetson-pace simulation)")
+    parser.add_argument(
+        "--max-pairs-per-truth",
+        type=int,
+        default=0,
+        help="limit clean and dirt recording pairs independently (0 = all)",
+    )
     parser.add_argument("--out", type=Path, default=Path("v7_video_validation.json"))
     args = parser.parse_args()
 
     models = load_models()
-    # Measured from the footage: caps travel right -> left (negative x) on the
-    # RAW frames of BOTH cameras, so the simulation runs unmirrored with a
-    # negative belt direction.
+    # These MP4s already contain whatever mirroring the recorder applied. Both
+    # saved views move right -> left, so replay adds no further flip and uses a
+    # negative direction. This does not establish either live camera's raw
+    # orientation; live mirror calibration is still required.
     config = replace(
         RuntimeConfig.defaults(),
         mirror_cameras=(False, False),
@@ -218,9 +230,17 @@ def main() -> None:
     )
 
     results = {"config": {"stride": args.stride, "presence_direction": config.presence_direction,
-                          "mirror_cameras": list(config.mirror_cameras)}, "pairs": []}
+                          "mirror_cameras": list(config.mirror_cameras),
+                          "min_track_frames": config.min_track_frames,
+                          "min_line_side_frames": config.min_line_side_frames,
+                          "min_classified_frames": config.min_classified_frames,
+                          "required_inspected_cameras": config.required_inspected_cameras,
+                          "reject_uninspected": config.reject_uninspected}, "pairs": []}
     for truth in ("clean", "dirt"):
-        for cam0_path in sorted((args.videos_root / truth).glob("*_cam_0.mp4")):
+        cam0_paths = sorted((args.videos_root / truth).glob("*_cam_0.mp4"))
+        if args.max_pairs_per_truth > 0:
+            cam0_paths = cam0_paths[: args.max_pairs_per_truth]
+        for cam0_path in cam0_paths:
             cam2_path = Path(str(cam0_path).replace("_cam_0", "_cam_2"))
             print(f"[{truth}] {cam0_path.name} ...", flush=True)
             outcome = simulate_pair(models, cam0_path, cam2_path, config, stride=args.stride)
@@ -230,6 +250,7 @@ def main() -> None:
             print(
                 f"  caps={outcome['caps_seen']} rejects={outcome['rejects']} passes={outcome['passes']} "
                 f"fires={outcome['fires']} filtered={outcome['filtered_tracks']} "
+                f"unknown={outcome['unknown_inspections']} "
                 f"({outcome['wall_s']}s wall)",
                 flush=True,
             )
@@ -240,6 +261,7 @@ def main() -> None:
         totals[f"{prefix}_caps"] += pair["caps_seen"]
         totals[f"{prefix}_rejects"] += pair["rejects"]
         totals[f"{prefix}_passes"] += pair["passes"]
+        totals[f"{prefix}_unknown"] += pair["unknown_inspections"]
     results["totals"] = dict(totals)
     args.out.write_text(json.dumps(results, indent=2), encoding="utf-8")
 
@@ -247,9 +269,11 @@ def main() -> None:
     clean_caps = totals["clean_caps"] or 1
     dirt_caps = totals["dirt_caps"] or 1
     print(f"clean: {totals['clean_rejects']}/{totals['clean_caps']} rejected "
-          f"(false-reject rate {totals['clean_rejects'] / clean_caps:.1%})")
+          f"(folder false-reject rate {totals['clean_rejects'] / clean_caps:.1%}; "
+          f"unknown={totals['clean_unknown']})")
     print(f"dirt:  {totals['dirt_passes']}/{totals['dirt_caps']} passed "
-          f"(miss rate {totals['dirt_passes'] / dirt_caps:.1%}, label noise possible)")
+          f"(folder miss rate {totals['dirt_passes'] / dirt_caps:.1%}, label noise possible; "
+          f"unknown={totals['dirt_unknown']})")
     print(f"Details: {args.out}")
 
 

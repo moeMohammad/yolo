@@ -22,7 +22,9 @@ def _print_cap_event(record: CapEventRecord) -> None:
     print(
         f"[CAP {record.event_id}] {record.result.upper():6} "
         f"class={record.class_name} conf={confidence} flagged_by={cameras} "
-        f"fire={record.requested_fire_time or '-'}{deduped}"
+        f"inspection={record.inspection_status} air={record.fire_status} "
+        f"requested={record.requested_fire_time or '-'} "
+        f"actual={record.actual_fire_time or '-'}{deduped}"
     )
 
 

@@ -4,9 +4,9 @@ Two-stage Jetson-targeted cap inspection: a single-class cap detector plus a
 binary dirt crop classifier, with probability-based track voting (consecutive
 dirty frames AND trimmed-mean P(dirt)) replacing v6's per-frame class latch.
 Physical track qualification, presence-cycle idempotency, latest-frame capture,
-and the stale-safe reject scheduler carry over from v6 unchanged. GPIO defaults
-to ``gpio_output.py`` on BOARD pin 7 (GPIO09); the Raspberry Pi backend remains
-selectable.
+and the stale-safe reject scheduler carry over from v6. The configured hardware
+backend defaults to ``gpio_output.py`` on physical BOARD pin 7, while fresh and
+migrated settings remain in GPIO simulation until explicitly commissioned.
 """
 
 from .actuation import NullGPIOOutputPin, RejectScheduler

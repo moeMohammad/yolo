@@ -41,18 +41,20 @@ DEFECT_CLASS_ID = 1
 CLASSIFIER_DIRT_INDEX = 0
 
 GPIO_BACKENDS = ("rpi", "jetson")
+SETTINGS_SCHEMA_VERSION = 3
 
 DEFAULT_MODEL = "cap_detector_640.onnx"
 DEFAULT_CLASSIFIER_MODEL = "dirt_classifier_384.onnx"
 DEFAULT_CAMERAS = ("0", "2")
-# Measured on the recorded footage (Jul 2026): caps travel right -> left
-# (negative x) on the RAW frames of BOTH cameras, so nothing is mirrored and
-# the belt direction is negative. With the old (False, True)/positive
-# defaults every camera-0 track failed the directionality gate -> the June
-# live run saw no caps at all.
+# The saved footage travels right -> left after the recorder's configured
+# transforms. It does not prove the orientation of each camera's raw live
+# frames, so mirror calibration remains an explicit deployment check.
 DEFAULT_MIRROR_CAMERAS = (False, False)
 DEFAULT_RESOLUTION = (960, 600)
-DEFAULT_TARGET_FPS = 60
+# The cameras in the recorded rig deliver about 30 real frames/s. Requesting
+# 60 produced misleading video timestamps and extra USB/capture pressure while
+# providing no additional observations.
+DEFAULT_TARGET_FPS = 30
 DEFAULT_EXPOSURE = 8
 DEFAULT_PIXEL_FORMAT = "YUYV"
 DEFAULT_ONNX_INTRA_OP_THREADS = max(1, (os.cpu_count() or 2) // 2)
@@ -70,25 +72,34 @@ DEFAULT_CROP_MARGIN = 0.10
 # along the belt axis (fraction of the frame dimension). The classifier was
 # trained on center-frame captures; entry/exit perspectives are out-of-domain
 # and score spuriously high P(dirt), so edge frames contribute no evidence.
-DEFAULT_CLASSIFY_BAND_RATIO = 0.60
+DEFAULT_CLASSIFY_BAND_RATIO = 0.75
 # Classify at most this many boxes per frame (normally one cap is visible).
 DEFAULT_MAX_CLASSIFIED_BOXES = 2
 DEFAULT_DUPLICATE_IOU_THRESHOLD = 0.65
 DEFAULT_TRACK_IOU = 0.3
 # Must exceed the worst processed-frame interval or tracks fragment mid-cap;
 # must stay below the gap between consecutive caps at one camera.
-DEFAULT_TRACK_TIMEOUT_MS = 250.0
+DEFAULT_TRACK_TIMEOUT_MS = 350.0
 # A detector confidence score is not proof that a physical cap is present.
 # Qualify tracks using multiple frames and conveyor-like motion before they are
 # allowed to reach the event manager / air scheduler.
-DEFAULT_MIN_TRACK_FRAMES = 4
+DEFAULT_MIN_TRACK_FRAMES = 2
 DEFAULT_MIN_TRACK_TRAVEL_RATIO = 0.35
 DEFAULT_MIN_TRACK_DIRECTIONALITY = 0.60
-DEFAULT_MIN_DEFECT_FRAMES = 3
+DEFAULT_MIN_DEFECT_FRAMES = 2
+# A low-throughput Jetson may observe a fast cap only once on each side of the
+# gate. Requiring two observations per side made the system mathematically
+# incapable of seeing caps below roughly 7.5 processed FPS.
+DEFAULT_MIN_LINE_SIDE_FRAMES = 1
+# Never silently call a cap clean when the classifier did not produce enough
+# evidence. In production an unknown inspection is rejected fail-closed.
+DEFAULT_MIN_CLASSIFIED_FRAMES = 2
+DEFAULT_REQUIRED_INSPECTED_CAMERAS = 2
+DEFAULT_REJECT_UNINSPECTED = True
 DEFAULT_PRESENCE_LINE_AXIS = "x"
 DEFAULT_PRESENCE_LINE_RATIO = 0.50
 DEFAULT_PRESENCE_DIRECTION = "negative"
-DEFAULT_MAX_TRACK_GAP_MS = 250.0
+DEFAULT_MAX_TRACK_GAP_MS = 300.0
 # Near-simultaneous line crossings in the same perpendicular image band retain
 # one camera-local presence-cycle id, making actuation idempotent across
 # fragments without conflating concurrently visible caps in different bands.
@@ -102,7 +113,7 @@ DEFAULT_MERGE_WINDOW_MS = 150.0
 # so two distinguishable caps cannot reach the nozzle 250 ms apart.
 DEFAULT_MIN_FIRE_INTERVAL_MS = 250.0
 DEFAULT_GPIO_BACKEND = "jetson"
-DEFAULT_TRIGGER_PIN = GPIO09  # Jetson Nano BOARD pin 7
+DEFAULT_TRIGGER_PIN = GPIO09  # Legacy constant name; physical Jetson BOARD pin 7.
 DEFAULT_TRIGGER_DURATION = 0.3
 DEFAULT_TRIGGER_MIN_GAP = 0.0
 # Runnable jobs older than this are backlog, not timely reject commands. This
@@ -111,6 +122,8 @@ DEFAULT_TRIGGER_MIN_GAP = 0.0
 DEFAULT_TRIGGER_MAX_QUEUE_AGE_MS = 250.0
 DEFAULT_TRIGGER_MAX_LATENESS_MS = 500.0
 DEFAULT_MAX_FRAME_AGE_MS = 500.0
+DEFAULT_CAMERA_READ_TIMEOUT_S = 2.0
+DEFAULT_SIMULATE_GPIO = True
 DEFAULT_LIVE_PREVIEW_FPS = 30.0
 DEFAULT_DB_PATH = str(SCRIPT_DIR / "data" / "cap_line_history_v7.sqlite3")
 
@@ -135,6 +148,7 @@ def normalize_gpio_backend(backend: str) -> str:
 
 @dataclass(frozen=True)
 class RuntimeConfig:
+    settings_schema_version: int = SETTINGS_SCHEMA_VERSION
     model: str = DEFAULT_MODEL
     classifier_model: str = DEFAULT_CLASSIFIER_MODEL
     cameras: tuple[str, str] = DEFAULT_CAMERAS
@@ -159,6 +173,10 @@ class RuntimeConfig:
     min_track_travel_ratio: float = DEFAULT_MIN_TRACK_TRAVEL_RATIO
     min_track_directionality: float = DEFAULT_MIN_TRACK_DIRECTIONALITY
     min_defect_frames: int = DEFAULT_MIN_DEFECT_FRAMES
+    min_line_side_frames: int = DEFAULT_MIN_LINE_SIDE_FRAMES
+    min_classified_frames: int = DEFAULT_MIN_CLASSIFIED_FRAMES
+    required_inspected_cameras: int = DEFAULT_REQUIRED_INSPECTED_CAMERAS
+    reject_uninspected: bool = DEFAULT_REJECT_UNINSPECTED
     presence_line_axis: str = DEFAULT_PRESENCE_LINE_AXIS
     presence_line_ratio: float = DEFAULT_PRESENCE_LINE_RATIO
     presence_direction: str = DEFAULT_PRESENCE_DIRECTION
@@ -174,7 +192,10 @@ class RuntimeConfig:
     trigger_max_queue_age_ms: float = DEFAULT_TRIGGER_MAX_QUEUE_AGE_MS
     trigger_max_lateness_ms: float = DEFAULT_TRIGGER_MAX_LATENESS_MS
     max_frame_age_ms: float = DEFAULT_MAX_FRAME_AGE_MS
-    simulate_gpio: bool = False
+    camera_read_timeout_s: float = DEFAULT_CAMERA_READ_TIMEOUT_S
+    # Fresh and migrated installs start electrically disarmed. The operator
+    # must calibrate a viable gate-to-nozzle delay before choosing real GPIO.
+    simulate_gpio: bool = DEFAULT_SIMULATE_GPIO
     live_preview_fps: float = DEFAULT_LIVE_PREVIEW_FPS
     db_path: str = DEFAULT_DB_PATH
     no_display: bool = False
@@ -205,6 +226,59 @@ class RuntimeConfig:
         defaults = cls.defaults()
         allowed = defaults.to_json_dict()
         data = dict(data)
+        try:
+            source_schema = int(data.get("settings_schema_version", 0) or 0)
+        except (TypeError, ValueError):
+            source_schema = 0
+
+        # v7 originally shipped with geometry and throughput defaults that were
+        # later proven wrong on the recorded rig. The ignored JSON file survives
+        # a git pull, so merely changing dataclass defaults never fixed an
+        # already-deployed Jetson. Migrate only exact old shipped values; custom
+        # operator values are otherwise preserved.
+        if source_schema < SETTINGS_SCHEMA_VERSION:
+            legacy_camera_pair = tuple(str(value) for value in data.get("cameras", ())) == ("0", "3")
+            known_legacy_profile = (
+                legacy_camera_pair
+                and data.get("target_fps") == 60
+                and data.get("track_timeout_ms") == 250.0
+                and data.get("max_track_gap_ms") == 250.0
+                and data.get("min_track_frames") == 4
+                and data.get("min_defect_frames") == 3
+            )
+            if known_legacy_profile:
+                data["cameras"] = list(DEFAULT_CAMERAS)
+            if known_legacy_profile and str(data.get("presence_direction", "")).lower() == "positive":
+                # Camera 0 in the recorded rig proves negative-x motion, but
+                # those recordings do not prove camera 2's *raw* orientation:
+                # the recorder may already have applied its saved mirror flag.
+                # Correct the bad shared direction while preserving the
+                # operator's per-camera mirror calibration.
+                data["presence_direction"] = DEFAULT_PRESENCE_DIRECTION
+            old_defaults = {
+                "target_fps": (60,),
+                "classify_band_ratio": (0.60,),
+                "simulate_gpio": (False,),
+                # Schema 2 briefly used 500/400; migrate both it and the
+                # original 250/250 defaults while preserving custom tuning.
+                "track_timeout_ms": (250.0, 500.0),
+                "max_track_gap_ms": (250.0, 400.0),
+                "min_track_frames": (4,),
+                "min_defect_frames": (3,),
+            }
+            new_defaults = {
+                "target_fps": DEFAULT_TARGET_FPS,
+                "classify_band_ratio": DEFAULT_CLASSIFY_BAND_RATIO,
+                "simulate_gpio": DEFAULT_SIMULATE_GPIO,
+                "track_timeout_ms": DEFAULT_TRACK_TIMEOUT_MS,
+                "max_track_gap_ms": DEFAULT_MAX_TRACK_GAP_MS,
+                "min_track_frames": DEFAULT_MIN_TRACK_FRAMES,
+                "min_defect_frames": DEFAULT_MIN_DEFECT_FRAMES,
+            }
+            for key, old_values in old_defaults.items():
+                if key in data and data[key] in old_values:
+                    data[key] = new_defaults[key]
+            data["settings_schema_version"] = SETTINGS_SCHEMA_VERSION
         if "classifier_model" not in data:
             data.pop("model", None)
             data.pop("imgsz", None)
@@ -214,12 +288,18 @@ class RuntimeConfig:
                 float(defaults.max_track_gap_ms),
                 float(merged["track_timeout_ms"]),
             )
-        merged["cameras"] = tuple(str(value) for value in merged["cameras"])[:2]
+        camera_values = merged.get("cameras")
+        if not isinstance(camera_values, (list, tuple)) or len(camera_values) != 2:
+            camera_values = defaults.cameras
+        merged["cameras"] = tuple(str(value) for value in camera_values)
         mirror = list(merged.get("mirror_cameras", defaults.mirror_cameras))
         if len(mirror) != 2:
             mirror = list(defaults.mirror_cameras)
         merged["mirror_cameras"] = tuple(bool(value) for value in mirror)
-        merged["resolution"] = tuple(int(value) for value in merged["resolution"])[:2]
+        resolution_values = merged.get("resolution")
+        if not isinstance(resolution_values, (list, tuple)) or len(resolution_values) != 2:
+            resolution_values = defaults.resolution
+        merged["resolution"] = tuple(int(value) for value in resolution_values)
         merged["pixel_format"] = normalize_pixel_format(merged["pixel_format"])
         merged["gpio_backend"] = normalize_gpio_backend(merged["gpio_backend"])
         merged["presence_line_axis"] = str(merged["presence_line_axis"]).lower()
@@ -227,7 +307,7 @@ class RuntimeConfig:
         return cls(**merged)
 
 
-def validate_config(config: RuntimeConfig) -> None:
+def validate_config(config: RuntimeConfig, *, require_actuation_ready: bool = True) -> None:
     if len(config.cameras) != 2:
         raise ValueError("v7 requires exactly two cameras")
     if len(config.mirror_cameras) != 2:
@@ -266,6 +346,12 @@ def validate_config(config: RuntimeConfig) -> None:
         raise ValueError("min_track_directionality must be between 0 and 1")
     if int(config.min_defect_frames) < 2:
         raise ValueError("min_defect_frames must be at least 2")
+    if int(config.min_line_side_frames) < 1:
+        raise ValueError("min_line_side_frames must be at least 1")
+    if int(config.min_classified_frames) < 1:
+        raise ValueError("min_classified_frames must be at least 1")
+    if not 1 <= int(config.required_inspected_cameras) <= len(config.cameras):
+        raise ValueError("required_inspected_cameras must be between 1 and the camera count")
     if str(config.presence_line_axis).lower() not in {"x", "y"}:
         raise ValueError("presence_line_axis must be x or y")
     if not 0.0 <= float(config.presence_line_ratio) <= 1.0:
@@ -278,6 +364,18 @@ def validate_config(config: RuntimeConfig) -> None:
         raise ValueError("max_track_gap_ms cannot exceed track_timeout_ms")
     if float(config.presence_clear_ms) < 0:
         raise ValueError("presence_clear_ms must be 0 or greater")
+    if float(config.fire_delay_s) < 0:
+        raise ValueError("fire_delay_s must be 0 or greater")
+    if require_actuation_ready and not config.simulate_gpio:
+        minimum_decision_delay_s = float(config.track_timeout_ms) / 1000.0
+        if config.reject_uninspected:
+            minimum_decision_delay_s += float(config.merge_window_ms) / 1000.0
+        if float(config.fire_delay_s) <= minimum_decision_delay_s:
+            raise ValueError(
+                "real GPIO requires fire_delay_s to exceed the minimum decision horizon "
+                f"({minimum_decision_delay_s:.3f}s with the current tracking settings); "
+                "calibrate the physical gate-to-nozzle delay with simulate_gpio enabled first"
+            )
     if float(config.merge_window_ms) < 0:
         raise ValueError("merge_window_ms must be 0 or greater")
     if float(config.min_fire_interval_ms) < 0:
@@ -294,6 +392,8 @@ def validate_config(config: RuntimeConfig) -> None:
         raise ValueError("trigger_max_lateness_ms must be 0 or greater")
     if float(config.max_frame_age_ms) <= 0:
         raise ValueError("max_frame_age_ms must be greater than 0")
+    if float(config.camera_read_timeout_s) <= 0:
+        raise ValueError("camera_read_timeout_s must be greater than 0")
     if float(config.live_preview_fps) < 0:
         raise ValueError("live_preview_fps must be 0 or greater")
 
@@ -328,6 +428,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--min-track-travel-ratio", type=float, default=defaults.min_track_travel_ratio)
     parser.add_argument("--min-track-directionality", type=float, default=defaults.min_track_directionality)
     parser.add_argument("--min-defect-frames", type=int, default=defaults.min_defect_frames)
+    parser.add_argument("--min-line-side-frames", type=int, default=defaults.min_line_side_frames)
+    parser.add_argument("--min-classified-frames", type=int, default=defaults.min_classified_frames)
+    parser.add_argument(
+        "--required-inspected-cameras", type=int, default=defaults.required_inspected_cameras
+    )
+    parser.add_argument(
+        "--reject-uninspected",
+        action=argparse.BooleanOptionalAction,
+        default=defaults.reject_uninspected,
+    )
     parser.add_argument("--presence-line-axis", choices=["x", "y"], default=defaults.presence_line_axis)
     parser.add_argument("--presence-line-ratio", type=float, default=defaults.presence_line_ratio)
     parser.add_argument(
@@ -347,7 +457,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--trigger-max-queue-age-ms", type=float, default=defaults.trigger_max_queue_age_ms)
     parser.add_argument("--trigger-max-lateness-ms", type=float, default=defaults.trigger_max_lateness_ms)
     parser.add_argument("--max-frame-age-ms", type=float, default=defaults.max_frame_age_ms)
-    parser.add_argument("--simulate-gpio", action="store_true", default=defaults.simulate_gpio)
+    parser.add_argument("--camera-read-timeout-s", type=float, default=defaults.camera_read_timeout_s)
+    parser.add_argument(
+        "--simulate-gpio",
+        action=argparse.BooleanOptionalAction,
+        default=defaults.simulate_gpio,
+    )
     parser.add_argument("--live-preview-fps", type=float, default=defaults.live_preview_fps)
     parser.add_argument("--db-path", default=defaults.db_path)
     parser.add_argument("--no-display", action="store_true", default=defaults.no_display)
@@ -380,6 +495,10 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         min_track_travel_ratio=float(args.min_track_travel_ratio),
         min_track_directionality=float(args.min_track_directionality),
         min_defect_frames=int(args.min_defect_frames),
+        min_line_side_frames=int(args.min_line_side_frames),
+        min_classified_frames=int(args.min_classified_frames),
+        required_inspected_cameras=int(args.required_inspected_cameras),
+        reject_uninspected=bool(args.reject_uninspected),
         presence_line_axis=str(args.presence_line_axis).lower(),
         presence_line_ratio=float(args.presence_line_ratio),
         presence_direction=str(args.presence_direction).lower(),
@@ -395,6 +514,7 @@ def config_from_args(args: argparse.Namespace) -> RuntimeConfig:
         trigger_max_queue_age_ms=float(args.trigger_max_queue_age_ms),
         trigger_max_lateness_ms=float(args.trigger_max_lateness_ms),
         max_frame_age_ms=float(args.max_frame_age_ms),
+        camera_read_timeout_s=float(args.camera_read_timeout_s),
         simulate_gpio=bool(args.simulate_gpio),
         live_preview_fps=float(args.live_preview_fps),
         db_path=str(args.db_path),

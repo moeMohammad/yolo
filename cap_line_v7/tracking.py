@@ -115,6 +115,7 @@ class Track:
     consecutive_defect_frames: int = 0
     max_consecutive_defect_frames: int = 0
     min_defect_frames: int = 3
+    min_classified_frames: int = 2
     presence_cycle_id: int | None = None
     crossed_presence_line: bool = False
     presence_crossed_at: float | None = None
@@ -151,6 +152,7 @@ class Track:
         self.path_length_px += math.hypot(new_cx - prev_cx, new_cy - prev_cy)
         if dt > 0.0:
             self.velocity = ((new_cx - prev_cx) / dt, (new_cy - prev_cy) / dt)
+        previous_timestamp = self.last_seen
         if presence_line is not None:
             previous_value = prev_cx if presence_axis == "x" else prev_cy
             current_value = new_cx if presence_axis == "x" else new_cy
@@ -169,7 +171,12 @@ class Track:
             ):
                 self.crossed_presence_line = True
                 if self.presence_crossed_at is None:
-                    self.presence_crossed_at = float(timestamp)
+                    # Interpolate the center-line crossing between observations.
+                    # Using the first post-crossing frame adds up to one full
+                    # processed-frame interval of load-dependent timing error.
+                    denominator = abs(previous_delta) + abs(current_delta)
+                    fraction = 1.0 if denominator <= 0.0 else abs(previous_delta) / denominator
+                    self.presence_crossed_at = float(previous_timestamp + max(0.0, dt) * fraction)
                     if presence_axis == "x":
                         self.presence_cross_coordinate = new_cy
                         self.presence_cross_scale = max(1.0, float(box[3]) - float(box[1]))
@@ -179,27 +186,31 @@ class Track:
         self.last_seen = float(timestamp)
         self.last_box = box
         self.frame_count += 1
-        if p_dirt is None:
-            # No classifier evidence for this observation (crop failed or the
-            # per-frame classification budget was exceeded). Not proof of a
-            # clean frame either, but the conservative choice for actuation is
-            # to break the consecutive-dirt streak.
-            self.consecutive_defect_frames = 0
+        if p_dirt is not None:
+            self.observe_probability(p_dirt)
+
+    def observe_probability(self, p_dirt: float) -> None:
+        """Add one successful classifier observation.
+
+        A skipped/out-of-band classification is unknown, not clean evidence,
+        and therefore must not reset a dirt streak. A genuinely missed detector
+        frame still calls :meth:`mark_missed` and breaks temporal confirmation.
+        """
+
+        probability = min(1.0, max(0.0, float(p_dirt)))
+        self.dirt_probabilities.append(probability)
+        if probability >= self.frame_dirt_threshold:
+            self.defect_frame_count += 1
+            self.consecutive_defect_frames += 1
+            self.max_consecutive_defect_frames = max(
+                self.max_consecutive_defect_frames,
+                self.consecutive_defect_frames,
+            )
+            self.best_defect_conf = max(self.best_defect_conf, probability)
         else:
-            probability = min(1.0, max(0.0, float(p_dirt)))
-            self.dirt_probabilities.append(probability)
-            if probability >= self.frame_dirt_threshold:
-                self.defect_frame_count += 1
-                self.consecutive_defect_frames += 1
-                self.max_consecutive_defect_frames = max(
-                    self.max_consecutive_defect_frames,
-                    self.consecutive_defect_frames,
-                )
-                self.best_defect_conf = max(self.best_defect_conf, probability)
-            else:
-                self.undefected_frame_count += 1
-                self.consecutive_defect_frames = 0
-                self.best_undefected_conf = max(self.best_undefected_conf, 1.0 - probability)
+            self.undefected_frame_count += 1
+            self.consecutive_defect_frames = 0
+            self.best_undefected_conf = max(self.best_undefected_conf, 1.0 - probability)
 
     def mark_missed(self) -> None:
         """Break temporal dirt confirmation on a processed empty/miss frame."""
@@ -226,6 +237,12 @@ class Track:
             and self.defect_frame_count >= self.min_defect_frames
             and self.dirt_score >= self.track_dirt_threshold
         )
+
+    @property
+    def is_inspected(self) -> bool:
+        """Whether enough real classifier evidence exists to issue a verdict."""
+
+        return len(self.dirt_probabilities) >= int(self.min_classified_frames)
 
     @property
     def travel_ratio(self) -> float:
@@ -267,6 +284,7 @@ class Track:
         min_travel_ratio: float,
         min_directionality: float,
         max_observation_gap: float | None = None,
+        min_line_side_frames: int = 2,
         require_line_crossing: bool = True,
     ) -> bool:
         """Return whether observations look like a conveyor-carried cap."""
@@ -282,7 +300,10 @@ class Track:
             and (self.crossed_presence_line or not require_line_crossing)
             and (
                 not require_line_crossing
-                or (self.line_negative_frames >= 2 and self.line_positive_frames >= 2)
+                or (
+                    self.line_negative_frames >= int(min_line_side_frames)
+                    and self.line_positive_frames >= int(min_line_side_frames)
+                )
             )
         )
 
@@ -305,12 +326,14 @@ class CameraTracker:
         track_iou: float,
         track_timeout_s: float,
         min_defect_frames: int = 3,
+        min_classified_frames: int = 2,
         frame_dirt_threshold: float = 0.50,
         track_dirt_threshold: float = 0.45,
         presence_clear_s: float = 0.350,
         min_track_frames: int = 4,
         min_track_travel_ratio: float = 0.35,
         min_track_directionality: float = 0.60,
+        min_line_side_frames: int = 2,
         presence_line_axis: str = "x",
         presence_line_ratio: float = 0.50,
         presence_direction: str = "positive",
@@ -320,12 +343,14 @@ class CameraTracker:
         self.track_iou = float(track_iou)
         self.track_timeout_s = float(track_timeout_s)
         self.min_defect_frames = max(2, int(min_defect_frames))
+        self.min_classified_frames = max(1, int(min_classified_frames))
         self.frame_dirt_threshold = min(1.0, max(0.0, float(frame_dirt_threshold)))
         self.track_dirt_threshold = min(1.0, max(0.0, float(track_dirt_threshold)))
         self.presence_clear_s = max(0.0, float(presence_clear_s))
         self.min_track_frames = max(2, int(min_track_frames))
         self.min_track_travel_ratio = max(0.0, float(min_track_travel_ratio))
         self.min_track_directionality = max(0.0, min(1.0, float(min_track_directionality)))
+        self.min_line_side_frames = max(1, int(min_line_side_frames))
         self.presence_line_axis = "y" if str(presence_line_axis).lower() == "y" else "x"
         self.presence_line_ratio = max(0.0, min(1.0, float(presence_line_ratio)))
         direction = str(presence_direction).lower()
@@ -461,6 +486,7 @@ class CameraTracker:
                     consecutive_defect_frames=1 if first_is_dirt else 0,
                     max_consecutive_defect_frames=1 if first_is_dirt else 0,
                     min_defect_frames=self.min_defect_frames,
+                    min_classified_frames=self.min_classified_frames,
                     presence_cycle_id=None,
                     # One observation cannot prove that the center traversed
                     # the inspection line, even when the box spans it.
@@ -509,6 +535,7 @@ class CameraTracker:
                 min_travel_ratio=self.min_track_travel_ratio,
                 min_directionality=self.min_track_directionality,
                 max_observation_gap=self.max_track_gap_s,
+                min_line_side_frames=self.min_line_side_frames,
                 require_line_crossing=True,
             )
         ]

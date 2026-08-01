@@ -15,12 +15,19 @@ import os
 import queue
 import sqlite3
 import threading
+import tempfile
 import time
 import traceback
 from pathlib import Path
 from typing import Callable
 
-from cap_line_v7.config import GPIO_BACKENDS, RuntimeConfig, normalize_gpio_backend, normalize_pixel_format
+from cap_line_v7.config import (
+    GPIO_BACKENDS,
+    RuntimeConfig,
+    normalize_gpio_backend,
+    normalize_pixel_format,
+    validate_config,
+)
 from cap_line_v7.runtime import resolve_pin_factory, run_detection
 from cap_line_v7.types import RuntimeCallbacks
 
@@ -29,7 +36,9 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_SETTINGS_PATH = str(SCRIPT_DIR / "cap_line_ui_v7_settings.json")
 HISTORY_LIMIT = 200
 LIVE_POLL_INTERVAL_MS = 16
-TRIGGER_PIN_LABEL = "Trigger Pin (Jetson BOARD, e.g. 7 = GPIO09)"
+RUNTIME_LOG_BACKLOG = 500
+RUNTIME_LOG_DRAIN_LIMIT = 100
+TRIGGER_PIN_LABEL = "Trigger Pin (Jetson physical BOARD number, e.g. 7)"
 
 
 def create_gui_config() -> RuntimeConfig:
@@ -81,21 +90,63 @@ class ConfigSettingsStore:
 
     def __init__(self, path: str | os.PathLike[str] = DEFAULT_SETTINGS_PATH):
         self.path = Path(path)
+        self.last_load_migrated = False
 
     def load(self) -> RuntimeConfig:
+        self.last_load_migrated = False
         if not self.path.exists():
             return create_gui_config()
         try:
-            return RuntimeConfig.from_json_dict(json.loads(self.path.read_text(encoding="utf-8")))
+            raw = json.loads(self.path.read_text(encoding="utf-8"))
+            if not isinstance(raw, dict):
+                raise TypeError("settings JSON must contain an object")
+            config = RuntimeConfig.from_json_dict(raw)
+            # The editor must be able to reopen an electrically unarmed config
+            # so the operator can correct its delay. run_detection performs the
+            # stricter actuation-readiness validation on Start.
+            validate_config(config, require_actuation_ready=False)
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             return create_gui_config()
+        # ``from_json_dict`` performs versioned migrations. Persist the
+        # normalized result immediately so an ignored, deployment-local JSON
+        # file cannot re-apply an obsolete configuration at every startup.
+        if raw != config.to_json_dict():
+            try:
+                self.save(config)
+                self.last_load_migrated = True
+            except OSError as exc:
+                # The migrated in-memory config is still safer than falling
+                # back to the obsolete file; surface persistence failure in
+                # the process log for deployments whose UI has no terminal.
+                print(f"[SETTINGS][WARN] migrated settings could not be persisted: {exc}")
+        return config
 
     def save(self, config: RuntimeConfig) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
-            json.dumps(config.to_json_dict(), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
+        payload = json.dumps(config.to_json_dict(), indent=2, sort_keys=True) + "\n"
+        temporary_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                newline="\n",
+                dir=self.path.parent,
+                prefix=f".{self.path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temporary:
+                temporary.write(payload)
+                temporary.flush()
+                os.fsync(temporary.fileno())
+                temporary_path = Path(temporary.name)
+            os.replace(temporary_path, self.path)
+            temporary_path = None
+        finally:
+            if temporary_path is not None:
+                try:
+                    temporary_path.unlink()
+                except FileNotFoundError:
+                    pass
 
 
 class HistoryRepository:
@@ -116,8 +167,8 @@ class HistoryRepository:
         self._initialize()
 
     def _initialize(self) -> None:
-        # v7 starts on the (event_id, recorded_at) schema; there is no legacy
-        # v7 table shape to migrate (the v6 DB lives in its own file).
+        # Keep existing v7 history in place while adding outcome fields needed
+        # to distinguish scheduled, executed and failed actuator work.
         with self._connection:
             self._connection.execute(
                 """
@@ -133,10 +184,41 @@ class HistoryRepository:
                     requested_fire_time TEXT,
                     actual_fire_time TEXT,
                     fire_suppressed INTEGER NOT NULL DEFAULT 0,
+                    inspection_status TEXT NOT NULL DEFAULT 'valid',
+                    fire_status TEXT NOT NULL DEFAULT 'not_requested',
                     UNIQUE (event_id, recorded_at)
                 )
                 """
             )
+            columns = {
+                str(row[1])
+                for row in self._connection.execute("PRAGMA table_info(cap_line_history_v7)").fetchall()
+            }
+            if "inspection_status" not in columns:
+                self._connection.execute(
+                    "ALTER TABLE cap_line_history_v7 "
+                    "ADD COLUMN inspection_status TEXT NOT NULL DEFAULT 'valid'"
+                )
+            added_fire_status = "fire_status" not in columns
+            if added_fire_status:
+                self._connection.execute(
+                    "ALTER TABLE cap_line_history_v7 "
+                    "ADD COLUMN fire_status TEXT NOT NULL DEFAULT 'not_requested'"
+                )
+                # Historical rows can prove an execution only when an actual
+                # GPIO-on timestamp exists. A requested-only legacy row stays
+                # explicitly unknown rather than being presented as fired.
+                self._connection.execute(
+                    """
+                    UPDATE cap_line_history_v7
+                    SET fire_status = CASE
+                        WHEN actual_fire_time IS NOT NULL THEN 'fired'
+                        WHEN fire_suppressed != 0 THEN 'suppressed'
+                        WHEN requested_fire_time IS NOT NULL THEN 'legacy_unknown'
+                        ELSE 'not_requested'
+                    END
+                    """
+                )
             self._connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_cap_line_history_v7_recorded_at "
                 "ON cap_line_history_v7 (recorded_at DESC)"
@@ -149,9 +231,9 @@ class HistoryRepository:
                 INSERT INTO cap_line_history_v7 (
                     event_id, recorded_at, result, class_name, confidence,
                     cameras_json, flagged_cameras_json, requested_fire_time, actual_fire_time,
-                    fire_suppressed
+                    fire_suppressed, inspection_status, fire_status
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(event_id, recorded_at) DO UPDATE SET
                     result=excluded.result,
                     class_name=excluded.class_name,
@@ -160,7 +242,9 @@ class HistoryRepository:
                     flagged_cameras_json=excluded.flagged_cameras_json,
                     requested_fire_time=excluded.requested_fire_time,
                     actual_fire_time=excluded.actual_fire_time,
-                    fire_suppressed=excluded.fire_suppressed
+                    fire_suppressed=excluded.fire_suppressed,
+                    inspection_status=excluded.inspection_status,
+                    fire_status=excluded.fire_status
                 """,
                 (
                     int(record.event_id),
@@ -173,6 +257,8 @@ class HistoryRepository:
                     record.requested_fire_time,
                     record.actual_fire_time,
                     int(bool(getattr(record, "fire_suppressed", False))),
+                    str(getattr(record, "inspection_status", "valid") or "valid"),
+                    str(getattr(record, "fire_status", "not_requested") or "not_requested"),
                 ),
             )
 
@@ -182,7 +268,7 @@ class HistoryRepository:
             """
             SELECT event_id, recorded_at, result, class_name, confidence,
                    cameras_json, flagged_cameras_json, requested_fire_time, actual_fire_time,
-                   fire_suppressed
+                   fire_suppressed, inspection_status, fire_status
             FROM cap_line_history_v7
             ORDER BY recorded_at DESC, id DESC
             LIMIT ?
@@ -210,6 +296,7 @@ class DetectionAppController:
         self.worker_thread: threading.Thread | None = None
         self.stop_event: threading.Event | None = None
         self._message_queue: queue.Queue[tuple[str, object]] = queue.Queue()
+        self._log_queue: queue.Queue[str] = queue.Queue(maxsize=RUNTIME_LOG_BACKLOG)
         self._preview_lock = threading.Lock()
         self._latest_preview = None
         self._test_fire_requested = threading.Event()
@@ -220,11 +307,24 @@ class DetectionAppController:
         config = self.config_factory()
         self.stop_event = threading.Event()
         self._message_queue = queue.Queue()
+        self._log_queue = queue.Queue(maxsize=RUNTIME_LOG_BACKLOG)
         self._test_fire_requested.clear()  # never carry a stale request into a new run
         with self._preview_lock:
             self._latest_preview = None
         self.is_running = True
         self.status_text = "Running"
+        self._queue_log(
+            "[CONFIG] "
+            f"schema={getattr(config, 'settings_schema_version', '-')} "
+            f"cameras={tuple(config.cameras)} mirrors={tuple(config.mirror_cameras)} "
+            f"gate={config.presence_line_axis}@{config.presence_line_ratio:.3f}/"
+            f"{config.presence_direction} target_fps={config.target_fps} "
+            f"track_timeout_ms={config.track_timeout_ms:.0f} "
+            f"classified_frames={getattr(config, 'min_classified_frames', '-')} "
+            f"required_cameras={getattr(config, 'required_inspected_cameras', '-')} "
+            f"reject_uninspected={getattr(config, 'reject_uninspected', '-')} "
+            f"fire_delay_from_gate_s={config.fire_delay_s:.3f}"
+        )
         self.worker_thread = threading.Thread(
             target=self._worker_main, args=(config,), name="cap-line-v7-ui-worker", daemon=True
         )
@@ -264,7 +364,7 @@ class DetectionAppController:
                 preview_callback=self._store_preview,
                 history_callback=lambda record: self._message_queue.put(("history", record)),
                 performance_callback=lambda snapshot: self._message_queue.put(("performance", snapshot)),
-                log_fn=print,
+                log_fn=self._queue_log,
                 test_fire_poll=self._consume_test_fire_request,
             )
             self.detector_runner(config, callbacks, self.stop_event)
@@ -274,6 +374,29 @@ class DetectionAppController:
         finally:
             self._message_queue.put(("stopped", None))
 
+    def _queue_log(self, *values, **kwargs) -> None:
+        separator = str(kwargs.get("sep", " "))
+        message = separator.join(str(value) for value in values)
+        try:
+            self._log_queue.put_nowait(message)
+        except queue.Full:
+            # Keep the newest diagnostics without allowing a repeated camera
+            # warning to create an unbounded GUI backlog.
+            try:
+                self._log_queue.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self._log_queue.put_nowait(message)
+            except queue.Full:
+                pass
+        # Retain terminal/journal output for headless service diagnostics while
+        # also making the same message visible inside the operator UI.
+        try:
+            print(message, flush=bool(kwargs.get("flush", False)))
+        except Exception:
+            pass
+
     def _store_preview(self, preview_frame) -> None:
         with self._preview_lock:
             self._latest_preview = preview_frame.copy() if hasattr(preview_frame, "copy") else preview_frame
@@ -282,6 +405,7 @@ class DetectionAppController:
         history_records = []
         latest_performance = None
         latest_error = None
+        log_messages = []
         stopped = False
         while True:
             try:
@@ -296,6 +420,7 @@ class DetectionAppController:
             elif kind == "error":
                 latest_error = str(payload)
                 self.status_text = f"Error: {latest_error}"
+                log_messages.append(f"[ERROR] {latest_error}")
             elif kind == "stopped":
                 stopped = True
                 self.is_running = False
@@ -303,6 +428,11 @@ class DetectionAppController:
                 self.stop_event = None
                 if latest_error is None and not self.status_text.startswith("Error:"):
                     self.status_text = "Stopped"
+        for _ in range(RUNTIME_LOG_DRAIN_LIMIT):
+            try:
+                log_messages.append(self._log_queue.get_nowait())
+            except queue.Empty:
+                break
         with self._preview_lock:
             latest_preview = self._latest_preview
             self._latest_preview = None
@@ -310,6 +440,7 @@ class DetectionAppController:
             "history_records": history_records,
             "latest_preview": latest_preview,
             "latest_performance": latest_performance,
+            "log_messages": log_messages,
             "error": latest_error,
             "stopped": stopped,
         }
@@ -329,6 +460,7 @@ try:
         QHBoxLayout,
         QLabel,
         QLineEdit,
+        QPlainTextEdit,
         QPushButton,
         QScrollArea,
         QSpinBox,
@@ -377,6 +509,10 @@ if PYQT_AVAILABLE:
             self.setWindowTitle("Cap Line Inspector v7")
             self.resize(1380, 880)
             self._build_ui()
+            if getattr(self.settings_store, "last_load_migrated", False):
+                self.runtime_log.appendPlainText(
+                    f"[SETTINGS] migrated and saved {getattr(self.settings_store, 'path', 'settings')}"
+                )
             self._load_config(self._loaded_config)
             self._load_history_table()
             self._sync_controls()
@@ -452,13 +588,37 @@ if PYQT_AVAILABLE:
             counters = QGroupBox("Session")
             counters_layout = QGridLayout(counters)
             for index, key in enumerate(
-                ("caps_seen", "rejects", "gpio_backend", "capture_fps", "inference_ms")
+                (
+                    "caps_seen",
+                    "rejects",
+                    "unknown_inspections",
+                    "filtered_tracks",
+                    "gpio_backend",
+                    "capture_fps",
+                    "processed_fps",
+                    "throughput_status",
+                    "inference_ms",
+                    "detected_boxes",
+                    "max_detector_confidence",
+                    "stale_results",
+                    "model_providers",
+                )
             ):
                 counters_layout.addWidget(QLabel(key.replace("_", " ").title()), index, 0)
                 value = QLabel("-")
+                value.setWordWrap(True)
                 self.metric_labels[key] = value
                 counters_layout.addWidget(value, index, 1)
             side_layout.addWidget(counters)
+
+            diagnostics = QGroupBox("Runtime Log")
+            diagnostics_layout = QVBoxLayout(diagnostics)
+            self.runtime_log = QPlainTextEdit()
+            self.runtime_log.setReadOnly(True)
+            self.runtime_log.setMinimumHeight(150)
+            self.runtime_log.document().setMaximumBlockCount(500)
+            diagnostics_layout.addWidget(self.runtime_log)
+            side_layout.addWidget(diagnostics, 1)
             side_layout.addStretch(1)
             splitter.addWidget(side)
             splitter.setStretchFactor(0, 3)
@@ -495,6 +655,10 @@ if PYQT_AVAILABLE:
             self.min_track_travel_spin = QDoubleSpinBox(); self.min_track_travel_spin.setRange(0, 20); self.min_track_travel_spin.setDecimals(3)
             self.min_track_directionality_spin = QDoubleSpinBox(); self.min_track_directionality_spin.setRange(0, 1); self.min_track_directionality_spin.setDecimals(3)
             self.min_defect_frames_spin = QSpinBox(); self.min_defect_frames_spin.setRange(2, 100)
+            self.min_line_side_frames_spin = QSpinBox(); self.min_line_side_frames_spin.setRange(1, 100)
+            self.min_classified_frames_spin = QSpinBox(); self.min_classified_frames_spin.setRange(1, 100)
+            self.required_inspected_cameras_spin = QSpinBox(); self.required_inspected_cameras_spin.setRange(1, 2)
+            self.reject_uninspected_checkbox = QCheckBox("Reject caps without enough classifier evidence")
             self.presence_line_axis_combo = QComboBox(); self.presence_line_axis_combo.addItems(["x", "y"])
             self.presence_line_ratio_spin = QDoubleSpinBox(); self.presence_line_ratio_spin.setRange(0, 1); self.presence_line_ratio_spin.setDecimals(3)
             self.presence_direction_combo = QComboBox(); self.presence_direction_combo.addItems(["positive", "negative", "either"])
@@ -510,6 +674,7 @@ if PYQT_AVAILABLE:
             self.trigger_max_queue_age_spin = QDoubleSpinBox(); self.trigger_max_queue_age_spin.setRange(0, 10000); self.trigger_max_queue_age_spin.setDecimals(1)
             self.trigger_max_lateness_spin = QDoubleSpinBox(); self.trigger_max_lateness_spin.setRange(0, 10000); self.trigger_max_lateness_spin.setDecimals(1)
             self.max_frame_age_spin = QDoubleSpinBox(); self.max_frame_age_spin.setRange(1, 10000); self.max_frame_age_spin.setDecimals(1)
+            self.camera_read_timeout_spin = QDoubleSpinBox(); self.camera_read_timeout_spin.setRange(0.1, 60); self.camera_read_timeout_spin.setDecimals(1)
             self.live_preview_fps_spin = QDoubleSpinBox(); self.live_preview_fps_spin.setRange(0, 120); self.live_preview_fps_spin.setDecimals(1)
             self.db_path_input = QLineEdit()
             self.simulate_gpio_checkbox = QCheckBox("Simulate GPIO (no GPIO hardware)")
@@ -541,12 +706,16 @@ if PYQT_AVAILABLE:
                 ("Minimum Track Travel (box widths)", self.min_track_travel_spin),
                 ("Minimum Motion Directionality", self.min_track_directionality_spin),
                 ("Consecutive Defect Frames", self.min_defect_frames_spin),
+                ("Minimum Frames on Each Gate Side", self.min_line_side_frames_spin),
+                ("Minimum Classified Frames", self.min_classified_frames_spin),
+                ("Required Inspected Cameras", self.required_inspected_cameras_spin),
+                ("Fail-Closed Inspection", self.reject_uninspected_checkbox),
                 ("Presence Line Axis", self.presence_line_axis_combo),
-                ("Presence Line Ratio (needs 2 frames/side)", self.presence_line_ratio_spin),
+                ("Presence Gate Ratio", self.presence_line_ratio_spin),
                 ("Belt Direction", self.presence_direction_combo),
                 ("Maximum Track Observation Gap ms", self.max_track_gap_spin),
                 ("Presence Clear ms", self.presence_clear_spin),
-                ("Fire Delay s", self.fire_delay_spin),
+                ("Fire Delay from Presence Gate Crossing s", self.fire_delay_spin),
                 ("Merge Window ms", self.merge_window_spin),
                 ("Min Fire Interval ms", self.min_fire_interval_spin),
                 ("GPIO Backend", self.gpio_backend_combo),
@@ -556,6 +725,7 @@ if PYQT_AVAILABLE:
                 ("Trigger Max Queue Age ms", self.trigger_max_queue_age_spin),
                 ("Trigger Max Lateness ms", self.trigger_max_lateness_spin),
                 ("Maximum Processed Frame Age ms", self.max_frame_age_spin),
+                ("Camera Read Failure Timeout s", self.camera_read_timeout_spin),
                 ("Live Preview FPS", self.live_preview_fps_spin),
                 ("History DB Path", self.db_path_input),
             ):
@@ -568,9 +738,20 @@ if PYQT_AVAILABLE:
 
         def _build_history_tab(self) -> None:
             layout = QVBoxLayout(self.history_tab)
-            self.history_table = QTableWidget(0, 7)
+            self.history_table = QTableWidget(0, 10)
             self.history_table.setHorizontalHeaderLabels(
-                ["Cap", "Time", "Result", "Class", "Confidence", "Camera(s)", "Fire Time"]
+                [
+                    "Cap",
+                    "Time",
+                    "Result",
+                    "Inspection",
+                    "Class",
+                    "Confidence",
+                    "Camera(s)",
+                    "Air Status",
+                    "Requested Fire",
+                    "Actual Fire",
+                ]
             )
             layout.addWidget(self.history_table)
 
@@ -604,6 +785,10 @@ if PYQT_AVAILABLE:
             self.min_track_travel_spin.setValue(config.min_track_travel_ratio)
             self.min_track_directionality_spin.setValue(config.min_track_directionality)
             self.min_defect_frames_spin.setValue(config.min_defect_frames)
+            self.min_line_side_frames_spin.setValue(config.min_line_side_frames)
+            self.min_classified_frames_spin.setValue(config.min_classified_frames)
+            self.required_inspected_cameras_spin.setValue(config.required_inspected_cameras)
+            self.reject_uninspected_checkbox.setChecked(config.reject_uninspected)
             self.presence_line_axis_combo.setCurrentText(config.presence_line_axis)
             self.presence_line_ratio_spin.setValue(config.presence_line_ratio)
             self.presence_direction_combo.setCurrentText(config.presence_direction)
@@ -619,6 +804,7 @@ if PYQT_AVAILABLE:
             self.trigger_max_queue_age_spin.setValue(config.trigger_max_queue_age_ms)
             self.trigger_max_lateness_spin.setValue(config.trigger_max_lateness_ms)
             self.max_frame_age_spin.setValue(config.max_frame_age_ms)
+            self.camera_read_timeout_spin.setValue(config.camera_read_timeout_s)
             self.live_preview_fps_spin.setValue(config.live_preview_fps)
             self.db_path_input.setText(config.db_path)
             self.simulate_gpio_checkbox.setChecked(config.simulate_gpio)
@@ -628,6 +814,7 @@ if PYQT_AVAILABLE:
             imgsz = self.imgsz_spin.value()
             classifier_imgsz = self.classifier_imgsz_spin.value()
             config = RuntimeConfig(
+                settings_schema_version=defaults.settings_schema_version,
                 model=self.model_input.text().strip() or defaults.model,
                 classifier_model=self.classifier_model_input.text().strip() or defaults.classifier_model,
                 cameras=(self.cam0_input.text().strip() or "0", self.cam1_input.text().strip() or "2"),
@@ -652,6 +839,10 @@ if PYQT_AVAILABLE:
                 min_track_travel_ratio=self.min_track_travel_spin.value(),
                 min_track_directionality=self.min_track_directionality_spin.value(),
                 min_defect_frames=self.min_defect_frames_spin.value(),
+                min_line_side_frames=self.min_line_side_frames_spin.value(),
+                min_classified_frames=self.min_classified_frames_spin.value(),
+                required_inspected_cameras=self.required_inspected_cameras_spin.value(),
+                reject_uninspected=self.reject_uninspected_checkbox.isChecked(),
                 presence_line_axis=self.presence_line_axis_combo.currentText(),
                 presence_line_ratio=self.presence_line_ratio_spin.value(),
                 presence_direction=self.presence_direction_combo.currentText(),
@@ -667,6 +858,7 @@ if PYQT_AVAILABLE:
                 trigger_max_queue_age_ms=self.trigger_max_queue_age_spin.value(),
                 trigger_max_lateness_ms=self.trigger_max_lateness_spin.value(),
                 max_frame_age_ms=self.max_frame_age_spin.value(),
+                camera_read_timeout_s=self.camera_read_timeout_spin.value(),
                 live_preview_fps=self.live_preview_fps_spin.value(),
                 db_path=self.db_path_input.text().strip() or defaults.db_path,
                 simulate_gpio=self.simulate_gpio_checkbox.isChecked(),
@@ -733,25 +925,30 @@ if PYQT_AVAILABLE:
                 colors = "background-color: #b71c1c; color: white;"
             elif result == "pass":
                 colors = "background-color: #1b7a2f; color: white;"
+            elif result == "unknown":
+                colors = "background-color: #b26a00; color: white;"
             else:
                 colors = "background-color: #444444; color: #dddddd;"
             self.verdict_label.setStyleSheet(base + colors)
 
         def _update_verdict(self, record) -> None:
             cameras = ",".join(str(index) for index in record.flagged_cameras or record.cameras) or "-"
+            inspection_status = str(getattr(record, "inspection_status", "valid") or "valid")
+            fire_status = str(getattr(record, "fire_status", "not_requested") or "not_requested")
             text = (
                 f"CAP {record.event_id}: {record.result.upper()}\n"
-                f"{format_prediction_text(record.class_name, record.confidence, digits=2)} (cam {cameras})"
+                f"{format_prediction_text(record.class_name, record.confidence, digits=2)} (cam {cameras})\n"
+                f"inspection={inspection_status}  air={fire_status}"
             )
-            if record.fire_suppressed:
-                text += "\nfire deduped"
             self.verdict_label.setText(text)
-            self._style_verdict(record.result)
+            self._style_verdict("unknown" if inspection_status == "unknown" and record.result != "reject" else record.result)
 
         # -- polling --------------------------------------------------------
 
         def _poll_controller(self) -> None:
             changes = self.controller.drain_messages()
+            for message in changes["log_messages"]:
+                self.runtime_log.appendPlainText(str(message))
             if changes["latest_preview"] is not None:
                 self._update_preview(changes["latest_preview"])
             if changes["history_records"]:
@@ -781,9 +978,41 @@ if PYQT_AVAILABLE:
         def _update_performance(self, snapshot) -> None:
             self.metric_labels["caps_seen"].setText(str(snapshot.caps_seen))
             self.metric_labels["rejects"].setText(str(snapshot.rejects))
+            self.metric_labels["unknown_inspections"].setText(
+                str(getattr(snapshot, "unknown_inspections", 0))
+            )
+            self.metric_labels["filtered_tracks"].setText(
+                str(getattr(snapshot, "filtered_tracks", 0))
+            )
             self.metric_labels["gpio_backend"].setText(str(snapshot.gpio_backend))
             self.metric_labels["capture_fps"].setText(_format_tuple(snapshot.capture_fps_by_camera))
+            self.metric_labels["processed_fps"].setText(
+                _format_tuple(getattr(snapshot, "processed_fps_by_camera", ()))
+            )
+            throughput_status = str(getattr(snapshot, "throughput_status", "unknown"))
+            throughput_detail = str(getattr(snapshot, "throughput_detail", ""))
+            self.metric_labels["throughput_status"].setText(
+                f"{throughput_status}: {throughput_detail}" if throughput_detail else throughput_status
+            )
             self.metric_labels["inference_ms"].setText(_format_tuple(snapshot.inference_ms_by_camera))
+            detected_boxes = getattr(snapshot, "detected_boxes_by_camera", ())
+            self.metric_labels["detected_boxes"].setText(
+                ", ".join(str(int(value)) for value in detected_boxes) if detected_boxes else "-"
+            )
+            self.metric_labels["max_detector_confidence"].setText(
+                _format_tuple(getattr(snapshot, "max_detector_confidence_by_camera", ()), digits=3)
+            )
+            stale_results = getattr(snapshot, "stale_results_by_camera", ())
+            self.metric_labels["stale_results"].setText(
+                ", ".join(str(int(value)) for value in stale_results) if stale_results else "-"
+            )
+            detector_providers = getattr(snapshot, "detector_providers", ())
+            classifier_providers = getattr(snapshot, "classifier_providers", ())
+            detector_text = ", ".join(str(value) for value in detector_providers) or "-"
+            classifier_text = ", ".join(str(value) for value in classifier_providers) or "-"
+            self.metric_labels["model_providers"].setText(
+                f"detector: {detector_text}\nclassifier: {classifier_text}"
+            )
 
         def _load_history_table(self) -> None:
             rows = self.repository.fetch_history()
@@ -791,32 +1020,43 @@ if PYQT_AVAILABLE:
             for row_index, row in enumerate(rows):
                 is_reject = row.get("result") == "reject"
                 # Rejects show the cameras that flagged the defect; pass caps
-                # show every camera that saw the cap.
+                # show every camera that saw the cap. A fail-closed unknown
+                # reject has no defect-flagging camera, so show its observers.
                 cameras_key = "flagged_cameras_json" if is_reject else "cameras_json"
                 try:
-                    cameras = ", ".join(str(value) for value in json.loads(row.get(cameras_key) or "[]"))
+                    camera_values = json.loads(row.get(cameras_key) or "[]")
+                    if is_reject and not camera_values:
+                        camera_values = json.loads(row.get("cameras_json") or "[]")
+                    cameras = ", ".join(str(value) for value in camera_values)
                 except (TypeError, ValueError):
                     cameras = "-"
-                fire_time = "-"
-                if is_reject:
-                    fire_time = (
-                        row.get("actual_fire_time")
-                        or row.get("requested_fire_time")
-                        or ("deduped" if row.get("fire_suppressed") else "-")
-                    )
+                inspection_status = str(row.get("inspection_status") or "valid")
+                fire_status = str(row.get("fire_status") or "not_requested")
                 values = [
                     row.get("event_id"),
                     row.get("recorded_at"),
                     row.get("result"),
+                    inspection_status,
                     row.get("class_name"),
                     _format_float(row.get("confidence")),
                     cameras or "-",
-                    fire_time,
+                    fire_status,
+                    row.get("requested_fire_time") or "-",
+                    # Never substitute the requested target for physical GPIO
+                    # activation. A missing actual time means it did not fire.
+                    row.get("actual_fire_time") or "-",
                 ]
                 for column, value in enumerate(values):
                     item = QTableWidgetItem("" if value is None else str(value))
                     if column == 2:
-                        item.setForeground(QColor("#d32f2f") if is_reject else QColor("#2e7d32"))
+                        if is_reject:
+                            item.setForeground(QColor("#d32f2f"))
+                        elif row.get("result") == "unknown":
+                            item.setForeground(QColor("#b26a00"))
+                        else:
+                            item.setForeground(QColor("#2e7d32"))
+                    elif column == 7 and fire_status not in {"fired", "not_requested"}:
+                        item.setForeground(QColor("#d32f2f"))
                     self.history_table.setItem(row_index, column, item)
 
         def closeEvent(self, event: QCloseEvent) -> None:
